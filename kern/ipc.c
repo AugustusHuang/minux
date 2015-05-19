@@ -1,0 +1,5 @@
+#include "param.h"
+#include "systm.h"
+#include "process.h"
+#include "ipc.h"
+#include "type.h"
