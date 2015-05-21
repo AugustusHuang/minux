@@ -74,7 +74,7 @@
 #define ARCH_MPU_RASR_A3 0xe000edb8
 #define ARCH_STIR        0xe000ef00 /* software trigger interrupt register */
 #define ARCH_PID4        0xe000efd0 /* peripheral identification register */
-#define ARCH_PID5        0xe000efd4 /* peripheral identification register */
+#define ARCH_PID5        0xe000efd4
 #define ARCH_PID6        0xe000efd8
 #define ARCH_PID7        0xe000edfc
 #define ARCH_PID0        0xe000efe0

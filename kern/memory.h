@@ -15,6 +15,6 @@ struct mapent {
 
 int memory_alloc(map m, int size);
 void memory_free(map m, int, int);
-void memory_init(map m, int, int, char *, int);
+void memory_init();
 
 #endif

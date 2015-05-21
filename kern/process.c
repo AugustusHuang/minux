@@ -178,6 +178,9 @@ void process_init()
 	nprocs++;
 
 	curproc = &proc_idle;
+
+	prio_enqueue(proc_idle.pid);
+	prio_enqueue(proc_clk.pid);
 }
 
 void prio_enqueue(pid_t pid)
@@ -247,6 +250,31 @@ pid_t prio_dequeue(prio_t prio)
 void prio_head2tail(prio_t prio)
 {
 	LSR();
+
+	INTR_DISABLE();
+	if (prio > PRIO_MAX) {
+		errno = E_PERM;
+		INTR_ENABLE();
+		return;
+	}
+
+	if (pqueue[prio].head != NULL) {
+		if (pqueue[prio].head == pqueue[prio].tail) {
+			/* do nothing */
+			INTR_ENABLE();
+			return;
+		} else {
+			pqueue[prio].tail->next = pqueue[prio].head;
+			pqueue[prio].head = pqueue[prio].head->next;
+			pqueue[prio].tail = pqueue[prio].tail->next;
+			INTR_ENABLE();
+			return;
+		}
+	} else {
+		errno = E_SRCH;
+		INTR_ENABLE();
+		return;
+	}
 }
 
 void prio_init()
