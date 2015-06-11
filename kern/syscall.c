@@ -11,6 +11,7 @@ int exit(int status)
 {
 }
 
+/* TODO: Move to a static structure. */
 void syscall_init()
 {
 	struct sysent sysent[] = {
