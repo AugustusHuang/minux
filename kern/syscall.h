@@ -1,7 +1,7 @@
 #ifndef _SYSCALL_H_
 #define _SYSCALL_H_
 
-/* syscalls will have sys_ as its prefix */
+/* syscalls will have sys_ as its prefix, some of them will be fake. */
 #define sys_none    0
 #define	sys_exit    1
 #define	sys_read    3
@@ -27,29 +27,27 @@
 #define	sys_getpeername 31
 #define	sys_getsockname 32
 #define	sys_access  33
-#define	sys_chflags 34
-#define	sys_fchflags    35
+/* It seems no need to support file flags... */
+/* #define	sys_chflags 34 */
+/* #define	sys_fchflags    35 */
 #define	sys_sync    36
 #define	sys_kill    37
 #define	sys_getppid 39
 #define	sys_dup     41
 #define	sys_pipe    42
-#define	sys_getegid 43
 #define	sys_profil  44
 #define	sys_ktrace  45
 #define	sys_sigaction   46
-#define	sys_getgid  47
 #define	sys_sigprocmask 48
-#define	sys_getlogin    49
-#define	sys_setlogin    50
 #define	sys_acct    51
 #define	sys_sigpending  52
 #define	sys_sigaltstack 53
 #define	sys_ioctl   54
 #define	sys_reboot  55
 #define	sys_revoke  56
-#define	sys_symlink 57
-#define	sys_readlink    58
+/* And no symbolic links for simplicity. */
+/* #define	sys_symlink 57 */
+/* #define	sys_readlink    58 */
 #define	sys_execve  59
 #define	sys_umask   60
 #define	sys_msync   65
@@ -67,6 +65,7 @@
 #define sys_fcntl   92
 #define	sys_select	93
 #define	sys_setpriority	96
+/* syscall on networking will be supported in uxxx_net module. */
 #define	sys_socket	97
 #define	sys_connect	98
 #define	sys_getpriority	100

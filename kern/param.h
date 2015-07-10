@@ -1,9 +1,10 @@
 #ifndef _PARAM_H_
 #define _PARAM_H_
 
-#define MACHINE "ARM"
+/* Change the config.h. */
+#define MACHINE MACHINE_CONFIG
 
-#define VERSION "1.0.0"
+#define VERSION "0.0.1"
 
 /* system running level/state */
 #define SYS_THREAD       0x1
@@ -18,7 +19,7 @@
 
 /* Process priority levels, the smaller the higher priority. */
 #define PRIO_MIN 0U
-#define PRIO_IDLE PRIO_MAX
+#define PRIO_IDLE PRIO_MAX_CONFIG
 
 /* Interrupt priority levels, the smaller the higher priority,
  * 0 means configurable. */

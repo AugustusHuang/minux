@@ -35,10 +35,6 @@ int main()
 	if (errno != 0)
 		panic("interrupt_init");
 
-	syscall_init(); /* Initiate system calls. */
-	if (errno != 0)
-		panic("syscall_init");
-
 	/* User defined processes and data structures initiated here ... */
 
 	/* Once all defined, start to run the scheduler, and it will contain

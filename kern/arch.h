@@ -1,6 +1,7 @@
 #ifndef _ARCH_H_
 #define _ARCH_H_
 
+/* TODO: Now we are building OS upon Cortex-M4, how about backward? */
 /* reg_t numbers */
 #define R0  0
 #define R1  1
