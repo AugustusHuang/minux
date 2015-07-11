@@ -1,5 +1,5 @@
-#ifndef _ERRNO_H_
-#define _ERRNO_H_
+#ifndef KERN_ERRNO_H
+#define KERN_ERRNO_H
 
 extern int errno;
 

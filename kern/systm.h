@@ -1,5 +1,5 @@
-#ifndef _SYSTM_H_
-#define _SYSTM_H_
+#ifndef KERN_SYSTM_H
+#define KERN_SYSTM_H
 
 /* system level */
 extern int system_level;

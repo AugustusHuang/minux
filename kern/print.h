@@ -1,5 +1,5 @@
-#ifndef _PRINT_H_
-#define _PRINT_H_
+#ifndef KERN_PRINT_H
+#define KERN_PRINT_H
 
 void printf(const char *fmt, ... );
 

@@ -1,5 +1,5 @@
-#ifndef _MEMORY_H_
-#define _MEMORY_H_
+#ifndef KERN_MEMORY_H
+#define KERN_MEMORY_H
 
 /* We use original UN*X memory management here,
  * maybe changed when uxxx_fs is done. */

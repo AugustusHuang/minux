@@ -1,5 +1,5 @@
-#ifndef _IPC_H_
-#define _IPC_H_
+#ifndef KERN_IPC_H
+#define KERN_IPC_H
 
 typedef struct lock_proto *lock_proto;
 struct lock_proto {

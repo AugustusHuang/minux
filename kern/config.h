@@ -1,5 +1,5 @@
-#ifndef _CONFIG_H_
-#define _CONFIG_H_
+#ifndef KERN_CONFIG_H
+#define KERN_CONFIG_H
 
 #define MACHINE_CONFIG "ARM-CORTEX-M4"
 

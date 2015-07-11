@@ -1,5 +1,5 @@
-#ifndef _INTERRUPT_H_
-#define _INTERRUPT_H_
+#ifndef KERN_INTERRUPT_H
+#define KERN_INTERRUPT_H
 
 /* nesting level of interrupt */
 extern int interrupt_counter;

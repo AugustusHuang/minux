@@ -1,5 +1,5 @@
-#ifndef _CLOCK_H_
-#define _CLOCK_H_
+#ifndef KERN_CLOCK_H
+#define KERN_CLOCK_H
 
 typedef struct clock_time *clock_time;
 struct clock_time {

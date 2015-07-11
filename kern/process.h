@@ -1,5 +1,5 @@
-#ifndef _PROCESS_H_
-#define _PROCESS_H_
+#ifndef KERN_PROCESS_H
+#define KERN_PROCESS_H
 
 typedef struct process *process;
 struct process {

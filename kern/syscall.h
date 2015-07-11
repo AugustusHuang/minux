@@ -1,5 +1,5 @@
-#ifndef _SYSCALL_H_
-#define _SYSCALL_H_
+#ifndef KERN_SYSCALL_H
+#define KERN_SYSCALL_H
 
 /* syscalls will have sys_ as its prefix, some of them will be fake. */
 #define sys_none    0

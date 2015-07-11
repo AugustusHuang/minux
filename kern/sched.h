@@ -1,5 +1,5 @@
-#ifndef _SCHED_H_
-#define _SCHED_H_
+#ifndef KERN_SCHED_H
+#define KERN_SCHED_H
 
 /* preempt counter */
 extern int preempt_counter;

@@ -1,5 +1,5 @@
-#ifndef _PARAM_H_
-#define _PARAM_H_
+#ifndef KERN_PARAM_H
+#define KERN_PARAM_H
 
 /* Change the config.h. */
 #define MACHINE MACHINE_CONFIG

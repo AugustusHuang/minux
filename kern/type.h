@@ -1,5 +1,5 @@
-#ifndef _TYPE_H_
-#define _TYPE_H_
+#ifndef KERN_TYPE_H
+#define KERN_TYPE_H
 
 #ifndef TRUE
 #define TRUE 1
