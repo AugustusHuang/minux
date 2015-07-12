@@ -3,6 +3,16 @@
 
 #define MACHINE_CONFIG "ARM-CORTEX-M4"
 
+#define ENDIAN_BIG     0
+#define ENDIAN_LITTLE  1
+#define ENDIAN_DEFAULT 1
+#define ENDIAN_CONFIG  ENDIAN_DEFAULT
+
+#define VERSION_CONFIG "0.0.1"
+
+/* Here I assume 32-bit word size. */
+#define WORDSIZE_CONFIG 32
+
 /* priority from 0 to MAX */
 #define PRIO_MAX_CONFIG 63U
 #define PRIO_CLK_CONFIG 15U
@@ -15,7 +25,9 @@
 #define CLK_STACK_SIZE_CONFIG  4096U
 
 /* 0 means downward, 1 means upward */
-#define STACK_GROWTH_CONFIG 0
+#define STACK_GROWTH_DOWNWARD 0
+#define STACK_GROWTH_UPWARD   1
+#define STACK_GROWTH_CONFIG   STACK_GROWTH_DOWNWARD
 
 #define SWITCH_FREQUENCY_CONFIG 1000U
 

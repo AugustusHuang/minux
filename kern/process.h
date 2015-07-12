@@ -1,6 +1,27 @@
 #ifndef KERN_PROCESS_H
 #define KERN_PROCESS_H
 
+/* Process double link:
+ * ---------    ---------           ---------
+ * | proc1 |    | proc2 |           | procn |
+ * ---------    ---------           ---------
+ * |  sp1  |    |  sp2  |           |  spn  |
+ * ---------    ---------           ---------
+ * | other |    | other |           | other |
+ * | slots |    | slots |           | slots |
+ * ---------    ---------           ---------
+ * | prev  |<---+- prev |<---...<---+- prev |
+ * ---------    ---------           ---------
+ * | next -+--->| next -+--->...--->| next  |
+ * ---------    ---------           ---------
+ * | other |    | other |           | other |
+ * | slots |    | slots |           | slots |
+ * ---------    ---------           ---------
+ * | prioa |    | priob |           | prioz |
+ * ---------    ---------           ---------
+ * |  RUN  |    | WAIT  |           | SLEEP |
+ * ---------    ---------           ---------
+ * */
 typedef struct process *process;
 struct process {
 	uint32_t sp;
@@ -16,6 +37,19 @@ struct process {
 	uint8_t state;
 };
 
+/* Priority queue: nodes are single linked list.
+ * ----           ----------------------------------
+ * | -+---------->| node01 | node02 | node03 | ... |
+ * ----           ----------------------------------
+ * | -+---------->| node11 | node12 |
+ * ----           -------------------
+ * ....
+ * ----           -----------------------------
+ * | -+---------->| node(PRIO_MAX - 1)1 | ... |
+ * ----           -----------------------------
+ * | -+---------->| node(PRIO_MAX) |
+ * ----           ------------------
+ */
 typedef struct prio_queue *prio_queue;
 struct prio_queue {
 	prio_node head;

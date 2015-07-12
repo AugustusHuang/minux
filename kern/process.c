@@ -23,9 +23,9 @@ pid_t process_create(string name, prio_t prio, uint32_t ssize)
 			/* Now last_proc point to the last process */
 		}
 		if ((id = last_proc->pid + 1) > PID_MAX) {
-			errno = E_PROCLIM;
+			errno = EPROCLIM;
+			process_free(new_proc);
 			INTR_ENABLE();
-			/* TODO: Before we return... delete the allocated unused slot... */
 			return (pid_t) 0;
 		}
 
@@ -38,7 +38,7 @@ pid_t process_create(string name, prio_t prio, uint32_t ssize)
 		new_proc->time = ; /* FIXME */
 
 		if (prio > PRIO_MAX) {
-			errno = E_PERM;
+			errno = EPERM;
 			INTR_ENABLE();
 			return (pid_t) 0;
 		}
@@ -49,7 +49,7 @@ pid_t process_create(string name, prio_t prio, uint32_t ssize)
 		INTR_ENABLE();
 		return (pid_t) new_proc->pid;
 	} else {
-		errno = E_NOMEM;
+		errno = ENOMEM;
 		INTR_ENABLE();
 		/* 0 means something went wrong since idle will be present till end. */
 		return (pid_t) 0;
@@ -63,7 +63,7 @@ void process_delete(pid_t pid)
 
 	INTR_DISABLE();
 	if (pid > PID_MAX) {
-		errno = E_PROCLIM;
+		errno = EPROCLIM;
 		INTR_ENABLE();
 		return;
 	}
@@ -78,7 +78,7 @@ void process_delete(pid_t pid)
 		}
 	}
 
-	errno = E_SRCH;
+	errno = ESRCH;
 	INTR_ENABLE();
 	return;
 }
@@ -90,13 +90,13 @@ void process_prio_change(pid_t pid, prio_t new_prio)
 
 	INTR_DISABLE();
 	if (pid > PID_MAX) {
-		errno = E_PROCLIM;
+		errno = EPROCLIM;
 		INTR_ENABLE();
 		return;
 	}
 
 	if (new_prio > PRIO_MAX) {
-		errno = E_PERM;
+		errno = EPERM;
 		INTR_ENABLE();
 		return;
 	}
@@ -109,7 +109,7 @@ void process_prio_change(pid_t pid, prio_t new_prio)
 		}
 	}
 
-	errno = E_SRCH;
+	errno = ESRCH;
 	INTR_ENABLE();
 	return;
 }
@@ -118,22 +118,110 @@ uint32_t process_get_reg(pid_t pid, reg_t reg)
 {
 	process proc;
 	LSR();
+
+	INTR_DISABLE();
+
+	if (pid > PID_MAX) {
+		errno = EPROCLIM;
+		INTR_ENABLE();
+		/* TODO: How to tell apart 0 from 'real-0'? */
+		return 0;
+	}
+
+	for (proc = proc_list; proc != NULL; proc = proc->next) {
+		if (proc->pid == pid) {
+			/* TODO: Fetch the register content and return. */
+			INTR_ENABLE();
+			return ;
+		}
+	}
+
+	errno = ESRCH;
+	INTR_ENABLE();
+	/* TODO: Where should we store the process-related registers? */
+	return 0;
 }
 
 void process_set_reg(pid_t pid, reg_t reg, uint32_t value)
 {
 	process proc;
 	LSR();
+
+	INTR_DISABLE();
+
+	if (pid > PID_MAX) {
+		errno = EPROCLIM;
+		INTR_ENABLE();
+		return;
+	}
+
+	for (proc = proc_list; proc != NULL; proc = proc->next) {
+		if (proc->pid == pid) {
+			/* TODO: Set the register content. */
+			INTR_ENABLE();
+			return;
+		}
+	}
+
+	errno = ESRCH;
+	INTR_ENABLE();
+	return;
 }
 
 void process_sleep(pid_t pid, tm_t time)
 {
+	process proc;
 	LSR();
+
+	INTR_DISABLE();
+
+	if (pid > PID_MAX) {
+		errno = EPROCLIM;
+		INTR_ENABLE();
+		return;
+	}
+
+	for (proc = proc_list; proc != NULL; proc = proc->next) {
+		if (proc->pid == pid) {
+			/* TODO: Let's judge whether the process we wanna put to sleep
+			 * is the current running process or not. */
+			if (proc->state == PROC_RUN) {
+			} else if (proc->state == PROC_WAIT) {
+			} else {
+				/* Do nothing since it's already sleeping. */
+				return;
+			}
+		}
+	}
+
+	errno = ESRCH;
+	INTR_ENABLE();
+	return;
 }
 
+/* FIXME: If we wanna have process_resume as the reverse routine of 
+ * process_sleep, where should we store the original state? */
 void process_resume(pid_t pid)
 {
+	process proc;
 	LSR();
+
+	INTR_DISABLE();
+
+	if (pid > PID_MAX) {
+		errno = EPROCLIM;
+		INTR_ENABLE();
+		return;
+	}
+
+	for (proc = proc_list; proc != NULL; proc = proc->next) {
+		if (proc->pid == pid) {
+		}
+	}
+
+	errno = ESRCH;
+	INTR_ENABLE();
+	return;
 }
 
 void process_idle()
@@ -192,7 +280,7 @@ void prio_enqueue(pid_t pid)
 	INTR_DISABLE();
 
 	if (pid > PID_MAX) {
-		errno = E_PROCLIM;
+		errno = EPROCLIM;
 		INTR_ENABLE();
 		return;
 	}
@@ -212,11 +300,11 @@ void prio_enqueue(pid_t pid)
 			}
 		}
 
-		errno = E_SRCH;
+		errno = ESRCH;
 		INTR_ENABLE();
 		return;
 	} else {
-		errno = E_NOMEM;
+		errno = ENOMEM;
 		INTR_ENABLE();
 		return;
 	}
@@ -229,7 +317,7 @@ pid_t prio_dequeue(prio_t prio)
 
 	INTR_DISABLE();
 	if (prio > PRIO_MAX) {
-		errno = E_PERM;
+		errno = EPERM;
 		INTR_ENABLE();
 		return 0;
 	}
@@ -241,7 +329,7 @@ pid_t prio_dequeue(prio_t prio)
 		INTR_ENABLE();
 		return proc->pid;
 	} else {
-		errno = E_SRCH;
+		errno = ESRCH;
 		INTR_ENABLE();
 		return 0;
 	}
@@ -253,7 +341,7 @@ void prio_head2tail(prio_t prio)
 
 	INTR_DISABLE();
 	if (prio > PRIO_MAX) {
-		errno = E_PERM;
+		errno = EPERM;
 		INTR_ENABLE();
 		return;
 	}
@@ -271,12 +359,13 @@ void prio_head2tail(prio_t prio)
 			return;
 		}
 	} else {
-		errno = E_SRCH;
+		errno = ESRCH;
 		INTR_ENABLE();
 		return;
 	}
 }
 
+/* Initialize the priority queue. */
 void prio_init()
 {
 	int i;
@@ -332,4 +421,5 @@ static process process_alloc(uint32_t ssize)
 
 static void process_free(process proc)
 {
+	/* TODO */
 }

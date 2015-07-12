@@ -4,9 +4,13 @@
 /* Change the config.h. */
 #define MACHINE MACHINE_CONFIG
 
-#define VERSION "0.0.1"
+/* Operating System endianess. */
+#define ENDIAN  ENDIAN_CONFIG
 
-/* system running level/state */
+/* Operating System version. */
+#define VERSION VERSION_CONFIG
+
+/* System running level/state. */
 #define SYS_THREAD       0x1
 #define SYS_HANDLER      0x2
 #define SYS_PRIVILEGED   0x4

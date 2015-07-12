@@ -5,6 +5,7 @@
 static sysent sysent[] = {
 	{ 0, none },
 	{ 1, exit },
+
 	{ 0, none }, /* syscall 255. */
 };
 
