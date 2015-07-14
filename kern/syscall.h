@@ -4,18 +4,19 @@
 /* syscalls will have sys_ as its prefix, some of them will be fake. */
 #define sys_none    0
 #define	sys_exit    1
+/* #define sys_fork    2 */
 #define	sys_read    3
 #define	sys_write   4
 #define	sys_open    5
 #define	sys_close   6
 #define	sys_wait4   7
-#define	sys_link    9
-#define	sys_unlink  10
+/* #define	sys_link    9 */
+/* #define	sys_unlink  10 */
 #define	sys_chdir   12
 #define	sys_fchdir  13
 #define	sys_mknod   14
 #define	sys_chmod   15
-#define	sys_chown   16
+/* #define	sys_chown   16 */
 #define	sys_break   17
 #define	sys_getfsstat   18
 #define	sys_getpid  20

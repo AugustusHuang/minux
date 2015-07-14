@@ -23,9 +23,9 @@ pid_t process_create(string name, prio_t prio, uint32_t ssize)
 			/* Now last_proc point to the last process */
 		}
 		if ((id = last_proc->pid + 1) > PID_MAX) {
-			errno = EPROCLIM;
 			process_free(new_proc);
 			INTR_ENABLE();
+			errno = ESRCH;
 			return (pid_t) 0;
 		}
 
@@ -38,8 +38,8 @@ pid_t process_create(string name, prio_t prio, uint32_t ssize)
 		new_proc->time = ; /* FIXME */
 
 		if (prio > PRIO_MAX) {
-			errno = EPERM;
 			INTR_ENABLE();
+			errno = EPERM;
 			return (pid_t) 0;
 		}
 
@@ -47,11 +47,12 @@ pid_t process_create(string name, prio_t prio, uint32_t ssize)
 		new_proc->state = PROC_WAIT; /* Ready to run when created. */
 
 		INTR_ENABLE();
+		errno = ENONE;
 		return (pid_t) new_proc->pid;
 	} else {
-		errno = ENOMEM;
 		INTR_ENABLE();
 		/* 0 means something went wrong since idle will be present till end. */
+		errno = ENOMEM;
 		return (pid_t) 0;
 	}
 }
@@ -63,8 +64,8 @@ void process_delete(pid_t pid)
 
 	INTR_DISABLE();
 	if (pid > PID_MAX) {
-		errno = EPROCLIM;
 		INTR_ENABLE();
+		errno = ESRCH;
 		return;
 	}
 
@@ -74,12 +75,13 @@ void process_delete(pid_t pid)
 			proc->next->prev = proc->prev;
 			process_free(proc);
 			INTR_ENABLE();
+			errno = ENONE;
 			return;
 		}
 	}
 
-	errno = ESRCH;
 	INTR_ENABLE();
+	errno = ESRCH;
 	return;
 }
 
@@ -90,14 +92,14 @@ void process_prio_change(pid_t pid, prio_t new_prio)
 
 	INTR_DISABLE();
 	if (pid > PID_MAX) {
-		errno = EPROCLIM;
 		INTR_ENABLE();
+		errno = ESRCH;
 		return;
 	}
 
 	if (new_prio > PRIO_MAX) {
-		errno = EPERM;
 		INTR_ENABLE();
+		errno = EPERM;
 		return;
 	}
 
@@ -105,12 +107,13 @@ void process_prio_change(pid_t pid, prio_t new_prio)
 		if (proc->pid == pid) {
 			proc->prio = new_prio;
 			INTR_ENABLE();
+			errno = ENONE;
 			return;
 		}
 	}
 
-	errno = ESRCH;
 	INTR_ENABLE();
+	errno = ESRCH;
 	return;
 }
 
@@ -122,9 +125,15 @@ uint32_t process_get_reg(pid_t pid, reg_t reg)
 	INTR_DISABLE();
 
 	if (pid > PID_MAX) {
-		errno = EPROCLIM;
 		INTR_ENABLE();
 		/* TODO: How to tell apart 0 from 'real-0'? */
+		errno = ESRCH;
+		return 0;
+	}
+
+	if (reg > REG_MAX) {
+		INTR_ENABLE();
+		errno = EINVAL;
 		return 0;
 	}
 
@@ -132,13 +141,14 @@ uint32_t process_get_reg(pid_t pid, reg_t reg)
 		if (proc->pid == pid) {
 			/* TODO: Fetch the register content and return. */
 			INTR_ENABLE();
+			errno = ENONE;
 			return ;
 		}
 	}
 
-	errno = ESRCH;
 	INTR_ENABLE();
 	/* TODO: Where should we store the process-related registers? */
+	errno = ESRCH;
 	return 0;
 }
 
@@ -150,8 +160,14 @@ void process_set_reg(pid_t pid, reg_t reg, uint32_t value)
 	INTR_DISABLE();
 
 	if (pid > PID_MAX) {
-		errno = EPROCLIM;
 		INTR_ENABLE();
+		errno = ESRCH;
+		return;
+	}
+
+	if (reg > REG_MAX) {
+		INTR_ENABLE();
+		errno = EINVAL;
 		return;
 	}
 
@@ -159,12 +175,13 @@ void process_set_reg(pid_t pid, reg_t reg, uint32_t value)
 		if (proc->pid == pid) {
 			/* TODO: Set the register content. */
 			INTR_ENABLE();
+			errno = ENONE;
 			return;
 		}
 	}
 
-	errno = ESRCH;
 	INTR_ENABLE();
+	errno = ESRCH;
 	return;
 }
 
@@ -176,8 +193,8 @@ void process_sleep(pid_t pid, tm_t time)
 	INTR_DISABLE();
 
 	if (pid > PID_MAX) {
-		errno = EPROCLIM;
 		INTR_ENABLE();
+		errno = ESRCH;
 		return;
 	}
 
@@ -194,8 +211,8 @@ void process_sleep(pid_t pid, tm_t time)
 		}
 	}
 
-	errno = ESRCH;
 	INTR_ENABLE();
+	errno = ESRCH;
 	return;
 }
 
@@ -209,8 +226,8 @@ void process_resume(pid_t pid)
 	INTR_DISABLE();
 
 	if (pid > PID_MAX) {
-		errno = EPROCLIM;
 		INTR_ENABLE();
+		errno = ESRCH;
 		return;
 	}
 
@@ -219,8 +236,8 @@ void process_resume(pid_t pid)
 		}
 	}
 
-	errno = ESRCH;
 	INTR_ENABLE();
+	errno = ESRCH;
 	return;
 }
 
@@ -233,6 +250,10 @@ void process_idle()
 
 void process_clk()
 {
+	LSR();
+
+	for (;;) {
+	}
 }
 
 void process_init()
@@ -280,8 +301,8 @@ void prio_enqueue(pid_t pid)
 	INTR_DISABLE();
 
 	if (pid > PID_MAX) {
-		errno = EPROCLIM;
 		INTR_ENABLE();
+		errno = ESRCH;
 		return;
 	}
 
@@ -296,16 +317,17 @@ void prio_enqueue(pid_t pid)
 				pqueue[proc->prio].tail->next = n;
 				pqueue[proc->prio].tail = n;
 				INTR_ENABLE();
+				errno = ENONE;
 				return;
 			}
 		}
 
-		errno = ESRCH;
 		INTR_ENABLE();
+		errno = ESRCH;
 		return;
 	} else {
-		errno = ENOMEM;
 		INTR_ENABLE();
+		errno = ENOMEM;
 		return;
 	}
 }
@@ -317,8 +339,8 @@ pid_t prio_dequeue(prio_t prio)
 
 	INTR_DISABLE();
 	if (prio > PRIO_MAX) {
-		errno = EPERM;
 		INTR_ENABLE();
+		errno = EPERM;
 		return 0;
 	}
 
@@ -327,10 +349,11 @@ pid_t prio_dequeue(prio_t prio)
 		pqueue[prio].head = pqueue[prio].head->next;
 		memory_free(pqueue[prio].head);
 		INTR_ENABLE();
+		errno = ENONE;
 		return proc->pid;
 	} else {
-		errno = ESRCH;
 		INTR_ENABLE();
+		errno = ESRCH;
 		return 0;
 	}
 }
@@ -341,8 +364,8 @@ void prio_head2tail(prio_t prio)
 
 	INTR_DISABLE();
 	if (prio > PRIO_MAX) {
-		errno = EPERM;
 		INTR_ENABLE();
+		errno = EPERM;
 		return;
 	}
 
@@ -350,17 +373,19 @@ void prio_head2tail(prio_t prio)
 		if (pqueue[prio].head == pqueue[prio].tail) {
 			/* do nothing */
 			INTR_ENABLE();
+			errno = ENONE;
 			return;
 		} else {
 			pqueue[prio].tail->next = pqueue[prio].head;
 			pqueue[prio].head = pqueue[prio].head->next;
 			pqueue[prio].tail = pqueue[prio].tail->next;
 			INTR_ENABLE();
+			errno = ENONE;
 			return;
 		}
 	} else {
-		errno = ESRCH;
 		INTR_ENABLE();
+		errno = ESRCH;
 		return;
 	}
 }

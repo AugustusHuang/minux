@@ -69,4 +69,8 @@ typedef int64_t  off_t;
 #error word size doesn't supported.
 #endif
 
+#ifdef UXXX_FS
+typedef uint32_t  fd_t;
+#endif
+
 #endif

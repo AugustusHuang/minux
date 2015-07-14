@@ -21,12 +21,12 @@ struct sysent {
 	int narg; /* number of arguments */
 	int (*syscall)(); /* function */
 };
-extern struct sysent sysent[];
 
 extern int nsysent;
 
 /* system tick frequency */
 extern int hz;
-extern int tick;
+/* system ticks */
+extern int ticks;
 
 #endif

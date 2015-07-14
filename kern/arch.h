@@ -24,6 +24,7 @@
 #define LR  14
 #define PC  15
 #define PSR 16
+#define REG_MAX 16
 
 /* On-chip registers. */
 #define ARCH_SCS_START   0xe000e000
