@@ -29,4 +29,6 @@ extern int hz;
 /* system ticks */
 extern int ticks;
 
+extern void panic(const string str);
+
 #endif

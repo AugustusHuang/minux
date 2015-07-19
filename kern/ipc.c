@@ -4,6 +4,7 @@
 #include "ipc.h"
 #include "type.h"
 
+/* I don't know whether to include mutex here. */
 static msg_init()
 {
 }

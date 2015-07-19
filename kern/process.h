@@ -29,7 +29,7 @@ struct process {
 	pid_t pid;
 	process prev;
 	process next; /* ranked by pid */
-	uint32_t *stack_begin;
+	void *stack_begin;
 	uint32_t stack_size;
 	void *text;
 	tm_t time;

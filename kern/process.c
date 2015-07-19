@@ -2,9 +2,11 @@
 #include "systm.h"
 #include "process.h"
 #include "type.h"
+#include "memory.h"
 
 static process process_alloc(uint32_t ssize);
 static void process_free(process proc);
+static void pnode_free(prio_node node);
 
 int process_create(string name, prio_t prio, uint32_t ssize)
 {
@@ -231,6 +233,7 @@ int process_clk()
 	LSR();
 
 	for (;;) {
+		/* clock. */
 	}
 
 	return ENONE;
@@ -278,6 +281,7 @@ int prio_enqueue(pid_t pid)
 {
 	prio_node n;
 	process proc;
+	mapent m;
 	LSR();
 
 	INTR_DISABLE();
@@ -287,7 +291,7 @@ int prio_enqueue(pid_t pid)
 		return ESRCH;
 	}
 
-	n = (prio_node) memory_alloc(sizeof(struct prio_node));
+	n = (prio_node) memory_alloc(m, sizeof(struct prio_node));
 	
 	if (n != NULL) {
 		for (proc = proc_list; proc != NULL; proc = proc->next) {
@@ -374,8 +378,9 @@ int prio_init()
 	return ENONE;
 }
 
-static process process_alloc(uint32_t ssize)
+static process process_alloc(uint32_t stack_size)
 {
+	mapent mem, mem2;
 	process new_proc;
 	uint32_t *stack;
 	LSR();
@@ -383,14 +388,14 @@ static process process_alloc(uint32_t ssize)
 #if (STACK_GROWTH == 1)
 	{
 		INTR_DISABLE();
-		new_proc = (process) memory_alloc(core, sizeof(struct process));
+		new_proc = (process) memory_alloc(mem, sizeof(struct process));
 		
 		if (new_proc != NULL) {
-			new_proc->stack_begin = (uint32_t *) memory_alloc(core, ssize);
+			new_proc->stack_begin = (uint32_t *) memory_alloc(mem2, stack_size);
 
 			if (new_proc->stack_begin == NULL) {
 				/* Allocation failed ... */
-				memory_free(core, new_proc);
+				memory_free(mem);
 				new_proc = NULL;
 			}
 		}
@@ -398,16 +403,16 @@ static process process_alloc(uint32_t ssize)
 #else
 	{
 		INTR_DISABLE();
-		stack = (uint32_t *) memory_alloc(ssize);
+		stack = (uint32_t *) memory_alloc(mem2, stack_size);
 
 		if (stack != NULL) {
-			new_proc = memory_alloc(core, sizeof(struct process));
+			new_proc = memory_alloc(mem, sizeof(struct process));
 
 			if (new_proc != NULL)
 				new_proc->stack_begin = stack;
 			else
 				/* Allocation failed ... */
-				memory_free(core, stack);
+				memory_free(mem);
 		} else
 			new_proc = NULL;
 	}
@@ -419,5 +424,34 @@ static process process_alloc(uint32_t ssize)
 
 static void process_free(process proc)
 {
-	/* TODO */
+	/* Free its memory entry. */
+	mapent m;
+	LSR();
+
+	/* If a map entry has proc between addr and addr + size, then free it.
+	 * The process stack will be manipulated the same way. */
+	INTR_DISABLE();
+	for (m = map_list; m != NULL; m = m->next)
+		if (m->addr <= proc && ((char *)m->addr + m->size) >= proc)
+			memory_free(m);
+
+	for (m = map_list; m != NULL; m = m->next)
+		if (m->addr <= proc->stack_begin && m->size >= proc->stack_size)
+			memory_free(m);
+
+	INTR_ENABLE();
+}
+
+static void pnode_free(prio_node node)
+{
+	/* Free its memory entry. */
+	mapent m;
+	LSR();
+
+	INTR_DISABLE();
+	for (m = map_list; m != NULL; m = m->next)
+		if (m->addr <= node && ((char *)m->addr + m->size) >= node)
+			memory_free(m);
+
+	INTR_ENABLE();
 }

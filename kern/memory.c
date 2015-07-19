@@ -3,65 +3,66 @@
 #include "process.h"
 #include "memory.h"
 
-int memory_alloc(mapent m, int size)
+/* for memmove */
+#include <string.h>
+
+#ifdef MEMORY_SIZE_CONFIG
+#define MEMORY_SIZE MEMORY_SIZE_CONFIG
+#else
+#define MEMORY_SIZE 256U
+#endif
+
+int memory_alloc(mapent m, uint32_t size)
 {
-	mapent m2;
-	int a;
+	if (raw_memory < size)
+		return ENOMEM;
 
-	for (m2 = m; m2->size; m2++) {
-		if (m2->size >= size) {
-			a = m2->addr;
-			m2->addr += size;
-			if ((m2->size -= size) == 0)
-				do {
-					m2++;
-					(m2 - 1)->addr = m2->addr;
-				} while ((m2 - 1)->size = m2->size);
-			errno = ENONE;
-			return a;
-		}
-	}
+	/* We have enough memory! Make a new mapent and link it to the end of
+	 * the memory map list. */
+	mapent slot;
+	/* After the loop slot points to the last map entry. */
+	for (slot = map_list; slot->next != NULL; slot = slot->next);
+	slot->next = m;
+	m->size = size;
+	m->next = NULL;
+	/* Fetch the address from the linear memory address. */
+	m->addr = &memory_array[MEMORY_SIZE - raw_memory];
 
-	errno = ENOMEM;
-	return 0;
+	raw_memory -= size;
+	return ENONE;
 }
 
-void memory_free(mapent m, int size, int addr)
+/* Since map entries are single-linked, we only need to free entry. */
+void memory_free(mapent m)
 {
-	mapent m2;
-	int temp;
-	int a = addr;
+	mapend slot;
 
-	/* find the mapent which contains address a. */
-	for (m2 = m; m2->addr <= a && m2->size; m2++);
+	/* Trivial case, remove it from the tail and add to raw memory. */
+	if (m->next == NULL)
+		for (slot = map_list; slot->next != m; slot = slot->next)
+			slot->next = NULL;
 
-	if (m2 > m && (m2 - 1)->addr + (m2 - 1)->size == a) {
-		(m2 - 1)->size += size;
-		if (a + size == m2->addr) {
-			(m2 - 1)->size += m2->size;
-			while (m2->size) {
-				m2++;
-				(m2 - 1)->addr = m2->addr;
-				(m2 - 1)->size = m2->size;
-			}
+	/* m lies in between. */
+	else {
+		/* Like what UN*X does, make those two memory fractions one. */
+		memmove(m->addr, m->next->addr, &memory_array[MEMORY_SIZE - raw_memory]
+				- (char *)m->next->addr);
+
+		for (slot = m->next; slot != NULL; slot = slot->next)
+			slot->addr = (void *)((char *)m->addr - m->size);
+
+		for (slot = map_list; slot->next != m; slot = slot->next) {
+			slot->next = m->next;
+			m->next = NULL;
 		}
-	} else {
-		if (a + size == m2->addr && m2->size) {
-			m2->addr -= size;
-			m2->size += size;
-		} else if (size)
-			do {
-				temp = m2->addr;
-				m2->addr = a;
-				a = temp;
-				temp = m2->size;
-				m2->size = size;
-				m2++;
-			} while (size = temp);
 	}
+	
+	raw_memory += m->size;
 }
 
 void memory_init()
 {
-	/* TODO: initialize a 'core' memory unit. */
+	raw_memory = MEMORY_SIZE;
+	/* At the very beginning raw_memory will be the one and only. */
+	map_list = NULL;
 }

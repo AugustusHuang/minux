@@ -42,7 +42,7 @@
 #define INTR_ENABLE()  interrupt_enable()
 #endif
 
-/* Memory buddy system minimal block size (b). */
-#define MEMORY_BLOCK_SIZE_CONFIG 1024U
+/* Memory system  size (b). */
+#define MEMORY_SIZE_CONFIG 512U
 
 #endif
