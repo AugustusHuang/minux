@@ -62,32 +62,31 @@ struct prio_node {
 	prio_node next;
 };
 
-/* return pid */
-pid_t process_create(string name, prio_t prio, uint32_t ssize);
-void process_delete(pid_t pid);
+int process_create(string name, prio_t prio, uint32_t ssize);
+int process_delete(pid_t pid);
 
-void process_prio_change(pid_t pid, prio_t new_prio);
+int process_prio_change(pid_t pid, prio_t new_prio);
 
-/* return register value */
-uint32_t process_get_reg(pid_t pid, reg_t reg);
-void process_set_reg(pid_t pid, reg_t reg, uint32_t value);
+/* return register value will be stored in ptr */
+int process_get_reg(pid_t pid, reg_t reg, uint32_t *ptr);
+int process_set_reg(pid_t pid, reg_t reg, uint32_t value);
 
-void process_sleep(pid_t pid, tm_t time);
-void process_resume(pid_t pid);
+int process_sleep(pid_t pid, tm_t time);
+int process_resume(pid_t pid);
 
 /* idle and clk process routine */
-void process_idle(void);
-void process_clk(void);
+int process_idle(void);
+int process_clk(void);
 
 /* initialization */
-void process_init(void);
+int process_init(void);
 
 /* prio_queue manipulations */
-void prio_enqueue(pid_t pid);
-pid_t prio_dequeue(prio_t prio);
-void prio_head2tail(prio_t prio);
+int prio_enqueue(pid_t pid);
+int prio_dequeue(prio_t prio);
+int prio_head2tail(prio_t prio);
 
-void prio_init(void);
+int prio_init(void);
 
 /* current running process */
 extern process curproc;

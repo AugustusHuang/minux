@@ -6,7 +6,7 @@
 static process process_alloc(uint32_t ssize);
 static void process_free(process proc);
 
-pid_t process_create(string name, prio_t prio, uint32_t ssize)
+int process_create(string name, prio_t prio, uint32_t ssize)
 {
 	process new_proc, last_proc;
 	pid_t id;
@@ -25,8 +25,7 @@ pid_t process_create(string name, prio_t prio, uint32_t ssize)
 		if ((id = last_proc->pid + 1) > PID_MAX) {
 			process_free(new_proc);
 			INTR_ENABLE();
-			errno = ESRCH;
-			return (pid_t) 0;
+			return ESRCH;
 		}
 
 		new_proc->pid = id;
@@ -39,25 +38,21 @@ pid_t process_create(string name, prio_t prio, uint32_t ssize)
 
 		if (prio > PRIO_MAX) {
 			INTR_ENABLE();
-			errno = EPERM;
-			return (pid_t) 0;
+			return EPERM;
 		}
 
 		new_proc->prio = prio;
 		new_proc->state = PROC_WAIT; /* Ready to run when created. */
 
 		INTR_ENABLE();
-		errno = ENONE;
-		return (pid_t) new_proc->pid;
+		return ENONE;
 	} else {
 		INTR_ENABLE();
-		/* 0 means something went wrong since idle will be present till end. */
-		errno = ENOMEM;
-		return (pid_t) 0;
+		return ENOMEM;
 	}
 }
 
-void process_delete(pid_t pid)
+int process_delete(pid_t pid)
 {
 	process proc;
 	LSR();
@@ -65,8 +60,7 @@ void process_delete(pid_t pid)
 	INTR_DISABLE();
 	if (pid > PID_MAX) {
 		INTR_ENABLE();
-		errno = ESRCH;
-		return;
+		return ESRCH;
 	}
 
 	for (proc = proc_list; proc != NULL; proc = proc->next) {
@@ -75,17 +69,15 @@ void process_delete(pid_t pid)
 			proc->next->prev = proc->prev;
 			process_free(proc);
 			INTR_ENABLE();
-			errno = ENONE;
-			return;
+			return ENONE;
 		}
 	}
 
 	INTR_ENABLE();
-	errno = ESRCH;
-	return;
+	return ESRCH;
 }
 
-void process_prio_change(pid_t pid, prio_t new_prio)
+int process_prio_change(pid_t pid, prio_t new_prio)
 {
 	process proc;
 	LSR();
@@ -93,31 +85,27 @@ void process_prio_change(pid_t pid, prio_t new_prio)
 	INTR_DISABLE();
 	if (pid > PID_MAX) {
 		INTR_ENABLE();
-		errno = ESRCH;
-		return;
+		return ESRCH;
 	}
 
 	if (new_prio > PRIO_MAX) {
 		INTR_ENABLE();
-		errno = EPERM;
-		return;
+		return EPERM;
 	}
 
 	for (proc = proc_list; proc != NULL; proc = proc->next) {
 		if (proc->pid == pid) {
 			proc->prio = new_prio;
 			INTR_ENABLE();
-			errno = ENONE;
-			return;
+			return ENONE;
 		}
 	}
 
 	INTR_ENABLE();
-	errno = ESRCH;
-	return;
+	return ESRCH;
 }
 
-uint32_t process_get_reg(pid_t pid, reg_t reg)
+int process_get_reg(pid_t pid, reg_t reg, uint32_t *ptr)
 {
 	process proc;
 	LSR();
@@ -126,33 +114,28 @@ uint32_t process_get_reg(pid_t pid, reg_t reg)
 
 	if (pid > PID_MAX) {
 		INTR_ENABLE();
-		/* TODO: How to tell apart 0 from 'real-0'? */
-		errno = ESRCH;
-		return 0;
+		return ESRCH;
 	}
 
 	if (reg > REG_MAX) {
 		INTR_ENABLE();
-		errno = EINVAL;
-		return 0;
+		return EINVAL;
 	}
 
 	for (proc = proc_list; proc != NULL; proc = proc->next) {
 		if (proc->pid == pid) {
 			/* TODO: Fetch the register content and return. */
 			INTR_ENABLE();
-			errno = ENONE;
-			return ;
+			return ENONE;
 		}
 	}
 
 	INTR_ENABLE();
 	/* TODO: Where should we store the process-related registers? */
-	errno = ESRCH;
-	return 0;
+	return ESRCH;
 }
 
-void process_set_reg(pid_t pid, reg_t reg, uint32_t value)
+int process_set_reg(pid_t pid, reg_t reg, uint32_t value)
 {
 	process proc;
 	LSR();
@@ -161,31 +144,27 @@ void process_set_reg(pid_t pid, reg_t reg, uint32_t value)
 
 	if (pid > PID_MAX) {
 		INTR_ENABLE();
-		errno = ESRCH;
-		return;
+		return ESRCH;
 	}
 
 	if (reg > REG_MAX) {
 		INTR_ENABLE();
-		errno = EINVAL;
-		return;
+		return EINVAL;
 	}
 
 	for (proc = proc_list; proc != NULL; proc = proc->next) {
 		if (proc->pid == pid) {
 			/* TODO: Set the register content. */
 			INTR_ENABLE();
-			errno = ENONE;
-			return;
+			return ENONE;
 		}
 	}
 
 	INTR_ENABLE();
-	errno = ESRCH;
-	return;
+	return ESRCH;
 }
 
-void process_sleep(pid_t pid, tm_t time)
+int process_sleep(pid_t pid, tm_t time)
 {
 	process proc;
 	LSR();
@@ -194,8 +173,7 @@ void process_sleep(pid_t pid, tm_t time)
 
 	if (pid > PID_MAX) {
 		INTR_ENABLE();
-		errno = ESRCH;
-		return;
+		return ESRCH;
 	}
 
 	for (proc = proc_list; proc != NULL; proc = proc->next) {
@@ -206,19 +184,18 @@ void process_sleep(pid_t pid, tm_t time)
 			} else if (proc->state == PROC_WAIT) {
 			} else {
 				/* Do nothing since it's already sleeping. */
-				return;
+				return ENONE;
 			}
 		}
 	}
 
 	INTR_ENABLE();
-	errno = ESRCH;
-	return;
+	return ESRCH;
 }
 
 /* FIXME: If we wanna have process_resume as the reverse routine of 
  * process_sleep, where should we store the original state? */
-void process_resume(pid_t pid)
+int process_resume(pid_t pid)
 {
 	process proc;
 	LSR();
@@ -227,8 +204,7 @@ void process_resume(pid_t pid)
 
 	if (pid > PID_MAX) {
 		INTR_ENABLE();
-		errno = ESRCH;
-		return;
+		return ESRCH;
 	}
 
 	for (proc = proc_list; proc != NULL; proc = proc->next) {
@@ -237,26 +213,30 @@ void process_resume(pid_t pid)
 	}
 
 	INTR_ENABLE();
-	errno = ESRCH;
-	return;
+	return ESRCH;
 }
 
-void process_idle()
+int process_idle()
 {
 	LSR();
 
 	for (;;) { /* do nothing */ }
+
+	/* Never here. */
+	return ENONE;
 }
 
-void process_clk()
+int process_clk()
 {
 	LSR();
 
 	for (;;) {
 	}
+
+	return ENONE;
 }
 
-void process_init()
+int process_init()
 {
 	/* Firstly, we make the idle process. */
 	proc_idle.sp = 0; /* TODO */
@@ -290,9 +270,11 @@ void process_init()
 
 	prio_enqueue(proc_idle.pid);
 	prio_enqueue(proc_clk.pid);
+
+	return ENONE;
 }
 
-void prio_enqueue(pid_t pid)
+int prio_enqueue(pid_t pid)
 {
 	prio_node n;
 	process proc;
@@ -302,8 +284,7 @@ void prio_enqueue(pid_t pid)
 
 	if (pid > PID_MAX) {
 		INTR_ENABLE();
-		errno = ESRCH;
-		return;
+		return ESRCH;
 	}
 
 	n = (prio_node) memory_alloc(sizeof(struct prio_node));
@@ -317,22 +298,19 @@ void prio_enqueue(pid_t pid)
 				pqueue[proc->prio].tail->next = n;
 				pqueue[proc->prio].tail = n;
 				INTR_ENABLE();
-				errno = ENONE;
-				return;
+				return ENONE;
 			}
 		}
 
 		INTR_ENABLE();
-		errno = ESRCH;
-		return;
+		return ESRCH;
 	} else {
 		INTR_ENABLE();
-		errno = ENOMEM;
-		return;
+		return ENOMEM;
 	}
 }
 
-pid_t prio_dequeue(prio_t prio)
+int prio_dequeue(prio_t prio)
 {
 	process proc;
 	LSR();
@@ -340,8 +318,7 @@ pid_t prio_dequeue(prio_t prio)
 	INTR_DISABLE();
 	if (prio > PRIO_MAX) {
 		INTR_ENABLE();
-		errno = EPERM;
-		return 0;
+		return EPERM;
 	}
 
 	if (pqueue[prio].head != NULL) {
@@ -349,49 +326,43 @@ pid_t prio_dequeue(prio_t prio)
 		pqueue[prio].head = pqueue[prio].head->next;
 		memory_free(pqueue[prio].head);
 		INTR_ENABLE();
-		errno = ENONE;
-		return proc->pid;
+		return ENONE;
 	} else {
 		INTR_ENABLE();
-		errno = ESRCH;
-		return 0;
+		return ESRCH;
 	}
 }
 
-void prio_head2tail(prio_t prio)
+int prio_head2tail(prio_t prio)
 {
 	LSR();
 
 	INTR_DISABLE();
 	if (prio > PRIO_MAX) {
 		INTR_ENABLE();
-		errno = EPERM;
-		return;
+		return EPERM;
 	}
 
 	if (pqueue[prio].head != NULL) {
 		if (pqueue[prio].head == pqueue[prio].tail) {
 			/* do nothing */
 			INTR_ENABLE();
-			errno = ENONE;
-			return;
+			return ENONE;
 		} else {
 			pqueue[prio].tail->next = pqueue[prio].head;
 			pqueue[prio].head = pqueue[prio].head->next;
 			pqueue[prio].tail = pqueue[prio].tail->next;
 			INTR_ENABLE();
-			errno = ENONE;
-			return;
+			return ENONE;
 		}
 	} else {
 		INTR_ENABLE();
-		errno = ESRCH;
-		return;
+		return ESRCH;
 	}
 }
 
 /* Initialize the priority queue. */
-void prio_init()
+int prio_init()
 {
 	int i;
 
@@ -399,6 +370,8 @@ void prio_init()
 		pqueue[i].head = NULL;
 		pqueue[i].tail = NULL;
 	}
+
+	return ENONE;
 }
 
 static process process_alloc(uint32_t ssize)
@@ -410,14 +383,14 @@ static process process_alloc(uint32_t ssize)
 #if (STACK_GROWTH == 1)
 	{
 		INTR_DISABLE();
-		new_proc = (process) memory_alloc(sizeof(struct process));
+		new_proc = (process) memory_alloc(core, sizeof(struct process));
 		
 		if (new_proc != NULL) {
-			new_proc->stack_begin = (uint32_t *) memory_alloc(ssize);
+			new_proc->stack_begin = (uint32_t *) memory_alloc(core, ssize);
 
 			if (new_proc->stack_begin == NULL) {
 				/* Allocation failed ... */
-				memory_free(new_proc);
+				memory_free(core, new_proc);
 				new_proc = NULL;
 			}
 		}
@@ -428,13 +401,13 @@ static process process_alloc(uint32_t ssize)
 		stack = (uint32_t *) memory_alloc(ssize);
 
 		if (stack != NULL) {
-			new_proc = memory_alloc(sizeof(struct process));
+			new_proc = memory_alloc(core, sizeof(struct process));
 
 			if (new_proc != NULL)
 				new_proc->stack_begin = stack;
 			else
 				/* Allocation failed ... */
-				memory_free(stack);
+				memory_free(core, stack);
 		} else
 			new_proc = NULL;
 	}

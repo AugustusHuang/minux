@@ -4,7 +4,7 @@
 /* preempt counter */
 extern int preempt_counter;
 
-void scheduler(void);
+void scheduler_init(void);
 void preempt_enable(void);
 void preempt_disable(void);
 

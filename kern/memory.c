@@ -63,4 +63,5 @@ void memory_free(mapent m, int size, int addr)
 
 void memory_init()
 {
+	/* TODO: initialize a 'core' memory unit. */
 }
