@@ -28,6 +28,12 @@ extern int nsysent;
 extern int hz;
 /* system ticks */
 extern int ticks;
+/* system current time */
+extern tm_t curtime;
+/* 3 ipc attributes linked lists */
+extern msg_queue_attr mqueue_attr;
+extern sem_queue_attr semqueue_attr;
+extern shm_queue_attr shmqueue_attr;
 
 extern void panic(const string str);
 

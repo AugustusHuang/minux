@@ -42,7 +42,12 @@
 #define INTR_ENABLE()  interrupt_enable()
 #endif
 
-/* Memory system  size (b). */
+/* Memory system size (b). */
 #define MEMORY_SIZE_CONFIG 512U
+
+/* Semaphore numbers. */
+#define SEMS_CONFIG 16U
+/* Shared memory pool size. */
+#define SHMS_CONFIG 16U
 
 #endif

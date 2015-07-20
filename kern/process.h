@@ -31,6 +31,7 @@ struct process {
 	process next; /* ranked by pid */
 	void *stack_begin;
 	uint32_t stack_size;
+	/* FIXME: Entrance function here? Or only the codes? I prefer the former. */
 	void *text;
 	tm_t time;
 	prio_t prio;

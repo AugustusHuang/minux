@@ -14,28 +14,30 @@ int main()
 {
 	/* Default arguments settings ... */
 	note = "";
-	version = VERSION;
+	version = VERSION_CONFIG;
 	errno = 0; /* by default set it to 0 */
 	preempt_counter = 0;
 	interrupt_counter = 0;
 	curproc = (process) 0;
 	curprio = (prio_t) 0;
 	system_level = SYS_THREAD | SYS_PRIVILEGED;
+	curtime = ; /* FIXME */
 
 	/* Modules initializations ... */
-	process_init(); /* Initiate the idle and clock process. */
+	errno = process_init(); /* Initiate the idle and clock process. */
 	if (errno != 0)
 		panic("process_init");
 
-	memory_init(); /* Initiate the memory blocks. */
+	errno = memory_init(); /* Initiate the memory blocks. */
 	if (errno != 0)
 		panic("memory_init");
 
-	interrupt_init(); /* Initiate the interrupt service routines. */
+	errno = interrupt_init(); /* Initiate the interrupt service routines. */
 	if (errno != 0)
 		panic("interrupt_init");
 
 	/* User defined processes and data structures initiated here ... */
+
 
 	/* Once all defined, start to run the scheduler, and it will contain
 	 * an infinite loop! */
