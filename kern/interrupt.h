@@ -4,14 +4,12 @@
 /* nesting level of interrupt */
 extern int interrupt_counter;
 
-#define NINTR 32 /* FIXME */
+int intr_systick(void);
+int intr_pendsv(void);
 
-void intr_systick(void);
-void intr_pendsv(void);
+int intr_nest_enter(void);
+int intr_nest_leave(void);
 
-void intr_nest_enter(void);
-void intr_nest_leave(void);
-
-void interrupt_init(void);
+int interrupt_init(void);
 
 #endif

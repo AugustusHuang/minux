@@ -10,4 +10,7 @@
 /* File name length. */
 #define FILE_NAME_LENGTH_CONFIG  8U
 
+/* Shared memory file size. */
+#define FS_SHM_CONFIG
+
 #endif

@@ -2,9 +2,11 @@
 #include "systm.h"
 #include "process.h"
 #include "interrupt.h"
+#include "signal.h"
 #include "type.h"
+#include "errno.h"
 
-void intr_systick()
+int intr_systick()
 {
 	LSR();
 
@@ -17,7 +19,7 @@ void intr_systick()
 	intr_nest_leave();
 }
 
-void intr_nest_enter()
+int intr_nest_enter()
 {
 	if (interrupt_counter >= INTR_NEST_MAX)
 		return;
@@ -25,7 +27,7 @@ void intr_nest_enter()
 	interrupt_counter++;
 }
 
-void intr_nest_leave()
+int intr_nest_leave()
 {
 	LSR();
 
@@ -47,7 +49,8 @@ void intr_nest_leave()
 	INTR_ENABLE();
 }
 
-void interrupt_init()
+int interrupt_init()
 {
 	interrupt_counter = 0;
+	return ENONE;
 }
