@@ -12,7 +12,6 @@
 typedef int bool;
 
 /* I don't know whether the host architecture will make effect. */
-#ifndef uint32_t
 typedef unsigned char      uint8_t;
 typedef unsigned short     uint16_t;
 typedef unsigned int       uint32_t; 
@@ -23,9 +22,7 @@ typedef unsigned long int  uint64_t;
 #else
 #error word size doesn't supported.
 #endif
-#endif
 
-#ifndef int32_t
 typedef char      int8_t;
 typedef short     int16_t;
 typedef int       int32_t;
@@ -35,7 +32,6 @@ typedef long long int64_t;
 typedef long int  int64_t;
 #else
 #error word size doesn't supported.
-#endif
 #endif
 
 typedef volatile uint8_t  vuint8_t;
@@ -48,6 +44,17 @@ typedef volatile int32_t  vint32_t;
 typedef volatile int64_t  vint64_t;
 
 typedef char     *string;
+
+/* void * pointers! */
+#if WORDSIZE_CONFIG == 64
+typedef long int          intptr_t;
+typedef unsigned long int uintptr_t;
+#elif WORDSIZE_CONFIG == 32
+typedef int               intptr_t;
+typedef unsigned int      uintptr_t;
+#else
+#error word size doesn't supported.
+#endif
 
 /* TODO: We should make them change with word size or not? */
 typedef int32_t   tm_t;

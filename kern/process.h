@@ -24,7 +24,7 @@
  * */
 typedef struct process *process;
 struct process {
-	uint32_t sp;
+	uintptr_t sp;
 	string name;
 	pid_t pid;
 	process prev;
@@ -34,7 +34,7 @@ struct process {
 	void *text;
 	tm_t time;
 	prio_t prio;
-	uint8_t state;
+	int state;
 };
 
 /* Priority queue: nodes are single linked list.

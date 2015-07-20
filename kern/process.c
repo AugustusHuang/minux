@@ -3,9 +3,11 @@
 #include "process.h"
 #include "type.h"
 #include "memory.h"
+#include "errno.h"
 
 static process process_alloc(uint32_t ssize);
 static void process_free(process proc);
+static prio_node pnode_alloc();
 static void pnode_free(prio_node node);
 
 int process_create(string name, prio_t prio, uint32_t ssize)
@@ -291,7 +293,7 @@ int prio_enqueue(pid_t pid)
 		return ESRCH;
 	}
 
-	n = (prio_node) memory_alloc(m, sizeof(struct prio_node));
+	n = pnode_alloc();
 	
 	if (n != NULL) {
 		for (proc = proc_list; proc != NULL; proc = proc->next) {
@@ -328,7 +330,7 @@ int prio_dequeue(prio_t prio)
 	if (pqueue[prio].head != NULL) {
 		proc = pqueue[prio].head->proc;
 		pqueue[prio].head = pqueue[prio].head->next;
-		memory_free(pqueue[prio].head);
+		pnode_free(pqueue[prio].head);
 		INTR_ENABLE();
 		return ENONE;
 	} else {
@@ -378,42 +380,56 @@ int prio_init()
 	return ENONE;
 }
 
+/* TODO: How about the process initialization? Shall we let them untouched? */
 static process process_alloc(uint32_t stack_size)
 {
+	int error;
 	mapent mem, mem2;
 	process new_proc;
-	uint32_t *stack;
 	LSR();
 
 #if (STACK_GROWTH == 1)
 	{
 		INTR_DISABLE();
-		new_proc = (process) memory_alloc(mem, sizeof(struct process));
+		error = memory_alloc(mem, sizeof(struct process));
 		
-		if (new_proc != NULL) {
-			new_proc->stack_begin = (uint32_t *) memory_alloc(mem2, stack_size);
+		if (!error) {
+			/* Process struct allocation succeed. */
+			new_proc = (process)mem->addr;
+			error = memory_alloc(mem2, stack_size);
 
-			if (new_proc->stack_begin == NULL) {
-				/* Allocation failed ... */
+			if (error) {
+				/* Stack allocation failed. */
 				memory_free(mem);
 				new_proc = NULL;
 			}
+
+			/* Stack allocation succeed. */
+			new_proc->stack_start = mem2->addr;
 		}
+
+		/* Process struct allocation failed. */
+		new_proc = NULL;
 	}
 #else
 	{
 		INTR_DISABLE();
-		stack = (uint32_t *) memory_alloc(mem2, stack_size);
+		error = memory_alloc(mem2, stack_size);
 
-		if (stack != NULL) {
-			new_proc = memory_alloc(mem, sizeof(struct process));
+		if (!error) {
+			/* Stack allocation succeed. */
+			error = memory_alloc(mem, sizeof(struct process));
 
-			if (new_proc != NULL)
-				new_proc->stack_begin = stack;
+			if (!error) {
+				/* Process struct allocation succeed. */
+				new_proc = (process)mem->addr;
+				new_proc->stack_start = mem2->addr;
+			}
 			else
-				/* Allocation failed ... */
-				memory_free(mem);
+				/* Process struct allocation failed. */
+				memory_free(mem2);
 		} else
+			/* Stack allocation failed. */
 			new_proc = NULL;
 	}
 #endif
@@ -432,14 +448,34 @@ static void process_free(process proc)
 	 * The process stack will be manipulated the same way. */
 	INTR_DISABLE();
 	for (m = map_list; m != NULL; m = m->next)
-		if (m->addr <= proc && ((char *)m->addr + m->size) >= proc)
+		if ((uintptr_t)m->addr <= (uintptr_t)proc &&
+				((uintptr_t)((char *)m->addr + m->size)) >= (uintptr_t)proc)
 			memory_free(m);
 
 	for (m = map_list; m != NULL; m = m->next)
-		if (m->addr <= proc->stack_begin && m->size >= proc->stack_size)
+		if ((uintptr_t)m->addr <= (uintptr_t)proc->stack_begin &&
+				m->size >= proc->stack_size)
 			memory_free(m);
 
 	INTR_ENABLE();
+}
+
+static prio_node pnode_alloc()
+{
+	int error;
+	mapent m;
+	prio_node pnode;
+	LSR();
+
+	INTR_DISABLE();
+	error = memory_alloc(m, sizeof(struct prio_node));
+	if (!error) {
+		/* Allocation succeed. */
+		pnode = (prio_node)m->addr;
+	} else
+		pnode = NULL;
+	INTR_ENABLE();
+	return pnode;
 }
 
 static void pnode_free(prio_node node)
@@ -450,7 +486,8 @@ static void pnode_free(prio_node node)
 
 	INTR_DISABLE();
 	for (m = map_list; m != NULL; m = m->next)
-		if (m->addr <= node && ((char *)m->addr + m->size) >= node)
+		if ((uintptr_t)m->addr <= (uintptr_t)node &&
+				((uintptr_t)((char *)m->addr + m->size)) >= (uintptr_t)node)
 			memory_free(m);
 
 	INTR_ENABLE();
