@@ -45,6 +45,10 @@
 /* Memory system size (b). */
 #define MEMORY_SIZE_CONFIG 512U
 
+/* Message queue maximal bytes. */
+#define MSGQ_CONFIG 2048U
+/* Message queue message maximal bytes. */
+#define MSGS_CONFIG 512U
 /* Semaphore numbers. */
 #define SEMS_CONFIG 16U
 /* Shared memory pool size. */

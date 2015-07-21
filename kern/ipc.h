@@ -30,6 +30,9 @@ struct ipc {
  * always use IPC_PRIVATE. */
 
 /* Message queue attribute structure, one to one message queue. */
+#define MAX_MSGQ MSGQ_CONFIG
+#define MAX_MSGS MSGS_CONFIG
+
 typedef struct msg_queue_attr *msg_queue_attr;
 struct msg_queue_attr {
 	struct ipc msg_ipc;
@@ -37,7 +40,7 @@ struct msg_queue_attr {
 	msg last;
 	uint32_t total_bytes;
 	uint32_t total_msgs;
-	/* The maximal size of messages in queue. */
+	/* The maximal total size of messages in queue. */
 	uint32_t max_bytes;
 	pid_t last_spid; /* last send pid */
 	pid_t last_rpid; /* last receive pid */
@@ -51,7 +54,8 @@ struct msg_queue_attr {
 typedef struct msg *msg;
 struct msg {
 	msg next;
-	char text[1];
+	string text;
+	uint16_t size;
 };
 
 #define MAX_SEMS SEMS_CONFIG

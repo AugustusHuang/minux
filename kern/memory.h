@@ -14,8 +14,13 @@ struct mapent {
 extern uint32_t total_memory;
 extern mapent map_list;
 
-int memory_alloc(mapent m, uint32_t size);
-void memory_free(mapent m);
-void memory_init();
+/* Memory module functions. */
+extern int memory_alloc(mapent m, uint32_t size);
+extern void memory_free(mapent m);
+extern void memory_init();
+
+/* User interface functions. */
+extern void *malloc(size_t size);
+extern void free(void *ptr);
 
 #endif

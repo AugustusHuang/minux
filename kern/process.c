@@ -414,6 +414,7 @@ int prio_init()
 	return ENONE;
 }
 
+/* TODO: Replace them with malloc and free version! */
 static process process_alloc(uint32_t stack_size)
 {
 	int error;

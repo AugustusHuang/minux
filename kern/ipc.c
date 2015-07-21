@@ -6,6 +6,7 @@
 #include "type.h"
 #include "errno.h"
 
+/* for memset */
 #include <string.h>
 
 /* Now all we support are ipc routines directly ported from sysv.
@@ -13,6 +14,31 @@
 
 int msg_send(int msg_id, const void *ptr, size_t size, mode_t flag)
 {
+	msg_queue_attr mqa;
+	int i;
+
+	if (msg_id < 0)
+		return EINVAL;
+
+	for (i = 0, mqa = mqueue_attr; i < msg_id; i++, mqa = mqa->next);
+
+	if (mqa == NULL)
+		return EINVAL;
+	
+	/* Found what we want. */
+	for (;;) {
+		int need_more_resources = 0;
+		
+		if (size > mqa->max_bytes)
+			return EINVAL;
+		if (mqa->msg_ipc.mode & MSG_LOCKED)
+			need_more_resources = 1;
+		if (size + mqa->total_bytes > mqa->max_bytes)
+			need_more_resources = 1;
+
+		if (need_more_resources) {
+		}
+	}
 }
 
 int msg_recv(int msg_id, void *ptr, size_t size, mode_t flag)
@@ -77,7 +103,8 @@ int msg_get(key_t key, mode_t flag)
 			mqa->last = NULL;
 			mqa->total_bytes = 0;
 			mqa->total_msgs = 0;
-			mqa->max_bytes = 0;
+			/* The up limit. */
+			mqa->max_bytes = MAX_MSGQ;
 			mqa->last_spid = 0;
 			mqa->last_rpid = 0;
 			mqa->stime = 0;
@@ -104,32 +131,69 @@ error:
  * and none of them are pre-allocated... */
 int msg_ctrl(int msg_id, int cmd, msg_queue_attr attr)
 {
-	msg_queue_attr mqa;
+	msg_queue_attr mqa, mqa2;
 	int i;
-	LSR();
 
-	INTR_DISABLE();
+	if (msg_id < 0)
+		return EINVAL;
 
 	for (i = 0, mqa = mqueue_attr; i < msg_id; i++, mqa = mqa->next);
-	/* Then we have the msg_queue_attr we need! */
 
+	/* Not found. */
+	if (mqa == NULL)
+		return EINVAL;
+
+	/* Then we have the msg_queue_attr we need! */
 	switch (cmd) {
 	case IPC_STAT:
-
+		/* Copy the 'msg_id'th msg_queue_attr to msg_queue_attr. */
+	{
+		attr = mqa;
+		/* Fall to the normal return. */
 		break;
+	}
 	case IPC_SET:
-
+	{
+		if (mqa->max_bytes == 0) {
+			errno = EINVAL;
+			goto error;
+		}
+		mqa->msg_ipc.mode = (mqa->msg_ipc.mode & ~0777) |
+			(attr->msg_ipc.mode & 0777);
+		mqa->max_bytes = attr->max_bytes;
+		mqa->ctime = curtime;
 		break;
+	}
 	case IPC_RMID:
+	{
+		msg msg_header;
 
+		msg_header = mqa->first;
+		while (msg_header != NULL) {
+			msg temp;
+			mqa->total_bytes -= msg_header->size;
+			mqa->total_msgs--;
+			temp = msg_header;
+			msg_header = msg_header->next;
+			free(temp);
+		}
+
+		/* All free, and make the maximum size 0, then free the entry. */
+		if (mqa->total_bytes != 0 || mqa->total_msgs != 0)
+			panic("msg_ctrl");
+		mqa->max_bytes = 0;
+
+		/* Find the entry before the one we want to remove. */
+		for (mqa2 = mqueue_attr; mqa2->next != mqa; mqa2 = mqa2->next);
+		mqa2->next = mqa->next;
+		free(mqa);
 		break;
+	}
 	default:
-		goto done2;
+		return EINVAL;
 	}
 
-done2:
-	INTR_ENABLE();
-	return EINVAL;
+	return ENONE;
 }
 
 int sem_op(int sem_id, sem_buf buf, size_t nops)

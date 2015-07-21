@@ -66,3 +66,21 @@ void memory_init()
 	/* At the very beginning raw_memory will be the one and only. */
 	map_list = NULL;
 }
+
+void *malloc(size_t size)
+{
+	mapent m;
+
+	if ((errno = memory_alloc(m, size)))
+		return NULL;
+	return m->addr;
+}
+
+void free(void *ptr)
+{
+	mapent m;
+	for (m = map_list; m != NULL; m = m->next)
+		if ((m->addr <= ptr) && (void *)((char *)m->addr + m->size) >= ptr)
+			memory_free(m);
+	/* If we don't found what to free, do nothing. */
+}
