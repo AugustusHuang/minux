@@ -12,9 +12,13 @@
 /* Now all we support are ipc routines directly ported from sysv.
  * Someday POSIX ipc will be supported! */
 
+/* Here argument size will be the size of the raw message to be passed. 
+ * If size is too big to be packed in one msg unit, split it. */
 int msg_send(int msg_id, const void *ptr, size_t size, mode_t flag)
 {
 	msg_queue_attr mqa;
+	msg message, head;
+	msg last_message == NULL;
 	int i;
 
 	if (msg_id < 0)
@@ -23,6 +27,8 @@ int msg_send(int msg_id, const void *ptr, size_t size, mode_t flag)
 	for (i = 0, mqa = mqueue_attr; i < msg_id; i++, mqa = mqa->next);
 
 	if (mqa == NULL)
+		return EINVAL;
+	if (mqa->max_bytes == 0)
 		return EINVAL;
 	
 	/* Found what we want. */
@@ -37,12 +43,176 @@ int msg_send(int msg_id, const void *ptr, size_t size, mode_t flag)
 			need_more_resources = 1;
 
 		if (need_more_resources) {
+			int we_own_it;
+
+			if ((flag & IPC_NOWAIT) != 0)
+				/* We can't wait for a resource. */
+				return EAGAIN;
+
+			/* FIXME: Question: is a lock required? */
+			if ((mqa->msg_ipc.mode & MSG_LOCKED) != 0)
+				we_own_it = 0;
+			else {
+				mqa->msg_ipc.mode |= MSG_LOCKED;
+				we_own_it = 1;
+			}
+			/* FIXME: And should we prevent incoming requests? */
+#if 0
+			errno = msg_sleep(mqa);
+#endif
+			if (we_own_it)
+				mqa->msg_ipc.mode &= ~MSG_LOCKED;
+			if (errno != 0) {
+				/* Interrupted. */
+				errno = EINTR;
+				return EINTR;
+			}
+
+			if (mqa->max_bytes == 0)
+				return EIDRM;
+		} else
+			break;
+	}
+
+	if (mqa->msg_ipc.mode & MSG_LOCKED)
+		panic("MSG_LOCKED");
+	if (size + mqa->total_bytes > mqa->max_bytes)
+		panic("size + total_bytes > max_bytes");
+
+	mqa->msg_ipc.mode |= MSG_LOCKED;
+
+	/* Initialize the message body with content pointed by 'ptr'.
+	 * The list will have form msg1->msg2->msg3... */
+	while (size > 0) {
+		size_t len;
+
+		if ((message = (msg)malloc(sizeof(struct msg))) == NULL)
+			return ENOMEM;
+		if (size > MAX_MSGS)
+			len = MAX_MSGS;
+		else
+			len = size;
+		memcpy(message->text, ptr, len);
+		size -= len;
+		ptr = (const char *)ptr + len;
+
+		if (last_message == NULL) {
+			last_message = message;
+			head = message;
+		}
+		else {
+			last_message->next = message;
+			last_message = message;
 		}
 	}
+
+	mqa->msg_ipc.mode &= ~MSG_LOCKED;
+	
+	/* Makesure the attr still alive. */
+	if (mqa->max_bytes == 0) {
+		for (message = mqa->first; message->next != NULL;
+				message = message->next)
+			free(message);
+		return EIDRM;
+	}
+
+	/* Enqueue the new message(s). */
+	if (mqa->first == NULL) {
+		mqa->first = head;
+		for (message = head, i = 1; message->next != NULL;
+				message = message->next, i++);
+		mqa->last = message;
+	} else {
+		mqa->last->next = head;
+		for (message = head, i = 1; message->next != NULL;
+				message = message->next, i++);
+		mqa->last = message;
+	}
+	mqa->last->next = NULL;
+	mqa->total_bytes += size;
+	mqa->total_msgs += i;
+	mqa->last_spid = curproc->pid;
+	mqa->stime = curtime;
+
+	return ENONE;
 }
 
 int msg_recv(int msg_id, void *ptr, size_t size, mode_t flag)
 {
+	msg_queue_attr mqa;
+	msg message;
+	size_t len = 0;
+	int i;
+
+	if (msg_id < 0)
+		return EINVAL;
+
+	for (i = 0, mqa = mqueue_attr; i < msg_id; i++, mqa = mqa->next);
+
+	if (mqa == NULL)
+		return EINVAL;
+	if (mqa->max_bytes == 0)
+		return EINVAL;
+	/* We get what we want. */
+
+	message = NULL;
+
+	/* Reuse the counter. */
+	i = 0;
+	while (message == NULL) {
+		msg prev;
+		msg *prev_ptr;
+
+		prev = NULL;
+		prev_ptr = &(mqa->first);
+		while ((message = *prev_ptr) != NULL) {
+			/* Increment the total extracted length. */
+			len += message->size;
+			i++;
+			prev = message;
+			prev_ptr = &(message->next);
+		}
+
+		if (message != NULL)
+			break;
+
+		/* No message but no wait. */
+		if ((flag & IPC_NOWAIT) != 0)
+			return ENOMSG;
+
+		/* We have time to wait. */
+#if 0
+		errno = msg_sleep(mqa);
+#endif
+		if (errno != 0) {
+			errno = EINTR;
+			return EINTR;
+		}
+
+		if (mqa->max_bytes == 0)
+			return EIDRM;
+	}
+
+	mqa->total_bytes -= len;
+	mqa->total_msgs -= i;
+	mqa->last_rpid = curproc->pid;
+	mqa->rtime = curtime;
+
+	if (size > len)
+		size = len;
+
+	for (len = 0, message = mqa->first; len < size;
+			len += MAX_MSGS, message = message->next) {
+		size_t tlen;
+
+		if (size - len > MAX_MSGS)
+			tlen = MAX_MSGS;
+		else
+			tlen = size - len;
+		memcpy(ptr, message->text, tlen);
+	}
+
+	return ENONE;
 }
 
 /* Return a msg_id. -1 means error, msg_id start from 0. */
@@ -51,9 +221,7 @@ int msg_get(key_t key, mode_t flag)
 	msg_queue_attr mqa;
 	mapent m;
 	int nth = 0;
-	LSR();
 
-	INTR_DISABLE();
 	if (key != IPC_PRIVATE)
 #ifdef UXXX_FS
 	{
@@ -119,10 +287,8 @@ int msg_get(key_t key, mode_t flag)
 	}
 
 found:
-	INTR_ENABLE();
 	return nth;
 error:
-	INTR_ENABLE();
 	return -1;
 }
 
@@ -206,9 +372,6 @@ int sem_get(key_t key, int count, mode_t flag)
 	sem_queue_attr sqa;
 	mapent m;
 	int nth = 0;
-	LSR();
-
-	INTR_DISABLE();
 
 	if (key != IPC_PRIVATE)
 #ifdef UXXX_FS
@@ -273,19 +436,16 @@ int sem_get(key_t key, int count, mode_t flag)
 			goto error;
 		}
 	}
+
 found:
-	INTR_ENABLE();
 	return nth;
+
 error:
-	INTR_ENABLE();
 	return -1;
 }
 
 int sem_ctrl(int sem_id, int count, int cmd, union semun args)
 {
-	LSR();
-
-	INTR_DISABLE();
 	switch (cmd) {
 	case IPC_STAT:
 		break;
@@ -312,7 +472,6 @@ int sem_ctrl(int sem_id, int count, int cmd, union semun args)
 	}
 
 done2:
-	INTR_ENABLE();
 	return EINVAL;
 }
 
@@ -333,10 +492,6 @@ static int shm_get_alloc(key_t key, size_t size, mode_t flag)
 	shm_queue_attr sqa;
 	int nth = 0;
 
-	LSR();
-
-	INTR_DISABLE();
-	
 	for (sqa = shmqueue_attr; sqa->next != NULL; sqa = sqa->next)
 		nth++;
 
@@ -361,10 +516,8 @@ static int shm_get_alloc(key_t key, size_t size, mode_t flag)
 	sqa->next = NULL;
 
 found:
-	INTR_ENABLE();
 	return nth;
 error:
-	INTR_ENABLE();
 	return -1;
 }
 
@@ -372,9 +525,6 @@ int shm_get(key_t key, size_t size, mode_t flag)
 {
 	shm_queue_attr sqa;
 	int nth = 0;
-	LSR();
-
-	INTR_DISABLE();
 
 	if (key != IPC_PRIVATE)
 #ifdef UXXX_FS
@@ -425,19 +575,16 @@ int shm_get(key_t key, size_t size, mode_t flag)
 			goto error;
 		}
 	}
+
 found:
-	INTR_ENABLE();
 	return nth;
+
 error:
-	INTR_ENABLE();
 	return -1;
 }
 
 int shm_ctrl(int shm_id, int cmd, shm_queue_attr attr)
 {
-	LSR();
-
-	INTR_DISABLE();
 	switch (cmd) {
 	case IPC_STAT:
 		break;
@@ -454,7 +601,6 @@ int shm_ctrl(int shm_id, int cmd, shm_queue_attr attr)
 	}
 
 done2:
-	INTR_ENABLE();
 	return EINVAL;
 }
 

@@ -55,7 +55,7 @@ typedef struct msg *msg;
 struct msg {
 	msg next;
 	string text;
-	uint16_t size;
+	size_t size;
 };
 
 #define MAX_SEMS SEMS_CONFIG
