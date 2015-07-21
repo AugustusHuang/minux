@@ -10,7 +10,7 @@ static void process_free(process proc);
 static prio_node pnode_alloc();
 static void pnode_free(prio_node node);
 
-int process_create(string name, prio_t prio, uint32_t ssize)
+int process_create(string name, prio_t prio, uint32_t ssize, int (*func)())
 {
 	process new_proc, last_proc;
 	pid_t id;
@@ -37,8 +37,8 @@ int process_create(string name, prio_t prio, uint32_t ssize)
 		last_proc->next = new_proc;
 		new_proc->next = NULL;
 		new_proc->stack_size = ssize;
-		new_proc->text = ; /* FIXME */
-		new_proc->time = ; /* FIXME */
+		new_proc->text = &func;
+		new_proc->time = 0;
 
 		if (prio > PRIO_MAX) {
 			INTR_ENABLE();
@@ -47,6 +47,8 @@ int process_create(string name, prio_t prio, uint32_t ssize)
 
 		new_proc->prio = prio;
 		new_proc->state = PROC_WAIT; /* Ready to run when created. */
+
+		nproc++; /* We have one more process now. */
 
 		INTR_ENABLE();
 		return ENONE;
@@ -72,6 +74,7 @@ int process_delete(pid_t pid)
 			proc->prev->next = proc->next;
 			proc->next->prev = proc->prev;
 			process_free(proc);
+			nprocs--; /* A process removed. */
 			INTR_ENABLE();
 			return ENONE;
 		}
@@ -185,11 +188,17 @@ int process_sleep(pid_t pid, tm_t time)
 			/* TODO: Let's judge whether the process we wanna put to sleep
 			 * is the current running process or not. */
 			if (proc->state == PROC_RUN) {
+				proc->state = PROC_SLEEP;
+				proc->time = time;
 			} else if (proc->state == PROC_WAIT) {
+				proc->state = PROC_SLEEP;
+				proc->time = time;
 			} else {
-				/* Do nothing since it's already sleeping. */
-				return ENONE;
+				/* Sleep for another 'time'. */
+				proc->time += time;
 			}
+			INTR_ENABLE();
+			return ENONE;
 		}
 	}
 
@@ -197,8 +206,6 @@ int process_sleep(pid_t pid, tm_t time)
 	return ESRCH;
 }
 
-/* FIXME: If we wanna have process_resume as the reverse routine of 
- * process_sleep, where should we store the original state? */
 int process_resume(pid_t pid)
 {
 	process proc;
@@ -213,6 +220,15 @@ int process_resume(pid_t pid)
 
 	for (proc = proc_list; proc != NULL; proc = proc->next) {
 		if (proc->pid == pid) {
+			if (proc->state == PROC_RUN || proc->state == PROC_WAIT)
+				/* Nothing to do then. */
+			else {
+				/* I decided to add it to wait list. Won't run immediately. */
+				proc->state = PROC_WAIT;
+				proc->time = 0;
+			}
+			INTR_ENABLE();
+			return ENONE;
 		}
 	}
 

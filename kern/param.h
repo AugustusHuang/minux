@@ -17,9 +17,9 @@
 #define SYS_UNPRIVILEGED 0x8
 
 /* Process states. */
-#define PROC_RUN   1U
-#define PROC_WAIT  2U
-#define PROC_SLEEP 3U
+#define PROC_RUN   1
+#define PROC_WAIT  2
+#define PROC_SLEEP 3
 
 /* Process priority levels, the smaller the higher priority. */
 #define PRIO_MIN 0U

@@ -99,17 +99,29 @@ error:
 	return -1;
 }
 
+/* FIXME: Since we are using linked list, does it mean we don't need to pass
+ * a msg_queue_attr struct pointer? To us there's no kernel structure,
+ * and none of them are pre-allocated... */
 int msg_ctrl(int msg_id, int cmd, msg_queue_attr attr)
 {
+	msg_queue_attr mqa;
+	int i;
 	LSR();
 
 	INTR_DISABLE();
+
+	for (i = 0, mqa = mqueue_attr; i < msg_id; i++, mqa = mqa->next);
+	/* Then we have the msg_queue_attr we need! */
+
 	switch (cmd) {
 	case IPC_STAT:
+
 		break;
 	case IPC_SET:
+
 		break;
 	case IPC_RMID:
+
 		break;
 	default:
 		goto done2;

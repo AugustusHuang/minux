@@ -31,9 +31,14 @@ struct process {
 	process next; /* ranked by pid */
 	void *stack_begin;
 	uint32_t stack_size;
-	/* FIXME: Entrance function here? Or only the codes? I prefer the former. */
-	void *text;
 	int (*text)();
+	/* How long since last switch (automatically) or sleep (manually),
+	 * when switched in to run, accumulate it, state is RUN,
+	 * when switched out, clear it to 0, state is WAIT
+	 * when made to sleep, set to the total sleep time and count down to 0,
+	 * state is SLEEP,
+	 * when resumed or reach 0, change state to WAIT and reset it to 0.
+	 */
 	tm_t time;
 	prio_t prio;
 	int state;
@@ -64,7 +69,7 @@ struct prio_node {
 	prio_node next;
 };
 
-int process_create(string name, prio_t prio, uint32_t ssize);
+int process_create(string name, prio_t prio, uint32_t ssize, int (*func)());
 int process_delete(pid_t pid);
 
 int process_prio_change(pid_t pid, prio_t new_prio);
@@ -76,9 +81,9 @@ int process_set_reg(pid_t pid, reg_t reg, uint32_t value);
 int process_sleep(pid_t pid, tm_t time);
 int process_resume(pid_t pid);
 
-/* idle and clk process routine */
+/* idle and tick process routine */
 int process_idle(void);
-int process_clk(void);
+int process_tick(void);
 
 /* initialization */
 int process_init(void);
@@ -97,8 +102,8 @@ extern process proc_list;
 /* idle process static structure, will have pid = 0, lowest priority */
 extern struct process proc_idle;
 /* clk process static structure, will have pid = 1, high priority */
-extern struct process proc_clk;
-/* current running processes numbers */
+extern struct process proc_tick;
+/* current processes numbers */
 extern uint32_t nprocs;
 /* current priority queue */
 extern struct prio_queue pqueue[PRIO_MAX + 1];
