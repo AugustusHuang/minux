@@ -24,7 +24,7 @@
  * */
 typedef struct process *process;
 struct process {
-	uintptr_t sp;
+	void *sp; /* updated when switched out */
 	string name;
 	pid_t pid;
 	process prev;
@@ -33,6 +33,7 @@ struct process {
 	uint32_t stack_size;
 	/* FIXME: Entrance function here? Or only the codes? I prefer the former. */
 	void *text;
+	int (*text)();
 	tm_t time;
 	prio_t prio;
 	int state;

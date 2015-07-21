@@ -230,12 +230,12 @@ int process_idle()
 	return ENONE;
 }
 
-int process_clk()
+int process_tick()
 {
 	LSR();
 
 	for (;;) {
-		/* clock. */
+		/* tick. */
 	}
 
 	return ENONE;
@@ -244,12 +244,18 @@ int process_clk()
 int process_init()
 {
 	/* Firstly, we make the idle process. */
-	proc_idle.sp = 0; /* TODO */
+	mapent map1, map2;
+	if (errno = memory_alloc(map1, IDLE_STACK_SIZE))
+		return errno;
+	if (errno = memory_alloc(map2, TICK_STACK_SIZE))
+		return errno;
+	/* sp will point to the very beginning of the stack. */
+	proc_idle.sp = map1->addr;
 	proc_idle.name = "idle";
 	proc_idle.pid = 0;
 	proc_idle.prev = NULL;
 	proc_idle.next = NULL;
-	proc_idle.stack_begin = 0; /* TODO */
+	proc_idle.stack_begin = map1->addr;
 	proc_idle.stack_size = IDLE_STACK_SIZE;
 	proc_idle.text = &process_idle;
 	proc_idle.time = 0; /* Never give up. */
@@ -257,24 +263,29 @@ int process_init()
 	proc_idle.state = PROC_RUN;
 	nprocs = 1;
 
-	/* Then the clk process. */
-	proc_clk.sp = 0; /* TODO */
-	proc_clk.name = "clk";
-	proc_clk.pid = 1;
-	proc_clk.prev = &proc_idle;
-	proc_idle.next = &proc_clk;
-	proc_clk.stack_begin = 0; /* TODO */
-	proc_clk.stack_size = CLK_STACK_SIZE;
-	proc_clk.text = &process_clk;
-	proc_clk.time = 0; /* Never give up. */
-	proc_clk.prio = PRIO_CLK; /* should be higher than idle's */
-	proc_clk.state = PROC_WAIT;
+	/* Then the tick process. */
+	tick = 0;
+	proc_tick.sp = map2->addr;
+	proc_tick.name = "tick";
+	proc_tick.pid = 1;
+	proc_tick.prev = &proc_idle;
+	proc_idle.next = &proc_tick;
+	proc_tick.stack_begin = map2->addr;
+	proc_tick.stack_size = TICK_STACK_SIZE;
+	proc_tick.text = &process_tick;
+	proc_tick.time = 0; /* Never give up. */
+	proc_tick.prio = PRIO_TICK; /* should be higher than idle's */
+	proc_tick.state = PROC_WAIT;
 	nprocs++;
 
 	curproc = &proc_idle;
 
+	errno = prio_init();
+	if (errno != 0)
+		panic("prio_init");
+
 	prio_enqueue(proc_idle.pid);
-	prio_enqueue(proc_clk.pid);
+	prio_enqueue(proc_tick.pid);
 
 	return ENONE;
 }
@@ -300,9 +311,15 @@ int prio_enqueue(pid_t pid)
 			if (proc->pid == pid) {
 				n->proc = proc;
 				n->next = NULL;
-				/* FIXME: consider when there's only one element */
-				pqueue[proc->prio].tail->next = n;
-				pqueue[proc->prio].tail = n;
+				if (pqueue[proc->prio].head == NULL) {
+					/* Prio queue of this level is empty */
+					pqueue[proc->prio].head = n;
+					pqueue[proc->prio].tail = n;
+				} else {
+					/* Current prio queue is not empty. */
+					pqueue[proc->prio].tail->next = n;
+					pqueue[proc->prio].tail = n;
+				}
 				INTR_ENABLE();
 				return ENONE;
 			}
@@ -350,6 +367,7 @@ int prio_head2tail(prio_t prio)
 	}
 
 	if (pqueue[prio].head != NULL) {
+		/* Prio queue of this level is not empty. */
 		if (pqueue[prio].head == pqueue[prio].tail) {
 			/* do nothing */
 			INTR_ENABLE();
@@ -380,7 +398,6 @@ int prio_init()
 	return ENONE;
 }
 
-/* TODO: How about the process initialization? Shall we let them untouched? */
 static process process_alloc(uint32_t stack_size)
 {
 	int error;

@@ -120,9 +120,11 @@ static sysent sysent[] = {
 
 nsysent = sizeof(sysent) / sizeof(sysent[0]);
 
-void none()
+int none()
 {
 	/* do nothing */
+	for (;;) {}
+	return 0;
 }
 
 int exit(int status)
@@ -130,18 +132,18 @@ int exit(int status)
 }
 
 #ifdef UXXX_FS
-void read(fd_t fd, string buf, uint32_t bytes)
+int read(fd_t fd, string buf, uint32_t bytes)
 {
 	fs_read(fd, buf, bytes);
 }
 
-void write(fd_t fd, string buf, uint32_t bytes)
+int write(fd_t fd, string buf, uint32_t bytes)
 {
 	fs_write(fd, buf, bytes);
 }
 
 /* flags is superfluous? */
-fd_t open(string path, int32_t flags, int32_t mode)
+int open(string path, int32_t flags, int32_t mode)
 {
 	fs_open(path, flags, mode);
 }
@@ -152,27 +154,27 @@ int close(fd_t fd)
 }
 #endif
 
-void wait4()
+int wait4()
 {
 }
 
 #ifdef UXXX_FS
-void chdir(string path)
+int chdir(string path)
 {
 	fs_chdir(path);
 }
 
-void fchdir(string path)
+int fchdir(string path)
 {
 	fs_fchdir(path);
 }
 
-void mknod()
+int mknod()
 {
 	fs_mknod();
 }
 
-void chmod()
+int chmod()
 {
 	fs_chmod();
 }
