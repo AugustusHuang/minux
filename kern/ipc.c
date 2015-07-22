@@ -550,35 +550,144 @@ error:
 	return -1;
 }
 
-int sem_ctrl(int sem_id, int count, int cmd, union semun args)
+int sem_ctrl(int sem_id, int count, int cmd, union sem_un args)
 {
+	sem_queue_attr sqa;
+	union sem_un arg, semun;
+	int i;
+
+	if (sem_id < 0)
+		return EINVAL;
+
+	for (i = 0, sqa = semqueue_attr; i < sem_id; i++, sqa = sqa->next);
+
+	if (sqa == NULL)
+		return EINVAL;
+
+	/* We get what we want, let's move. */
 	switch (cmd) {
 	case IPC_STAT:
-		break;
 	case IPC_SET:
-		break;
-	case IPC_RMID:
-		break;
-	case GETVAL:
-		break;
-	case SETVAL:
-		break;
-	case GETPID:
-		break;
-	case GETNCNT:
-		break;
-	case GETZCNT:
-		break;
 	case GETALL:
-		break;
+	case SETVAL:
 	case SETALL:
-		break;
-	default:
-		goto done2;
+		/* FIXME: What if fails? */
+		memcpy(&arg, &args, sizeof(args));
 	}
 
-done2:
-	return EINVAL;
+	switch (cmd) {
+	case IPC_STAT:
+		semun.attr = sqa;
+		break;
+	case IPC_SET:
+		/* FIXME */
+		memcpy(arg.attr, sqa, sizeof(*sqa));
+		semun.attr = sqa;
+		break;
+	case GETALL:
+	case SETALL:
+		semun.array = arg.array;
+	case SETVAL:
+		semun.val = arg.val;
+	}
+
+	/* Corresponding to kern_semctl. */
+	switch (cmd) {
+	case IPC_STAT:
+		/* FIXME */
+		memcpy(arg.attr, sqa, sizeof(struct sem_queue_attr));
+		break;
+	case IPC_SET:
+		sqa->sem_ipc.mode = (sqa->sem_ipc.mode & ~0777) |
+			(arg.attr->sem_ipc.mode & 0777);
+		sqa->ctime = curtime;
+		break;
+	case IPC_RMID:
+		sqa->sem_ipc.mode = 0;
+		/* TODO: I wanna remove the sem allocated with this id and this attr. */
+		break;
+	case GETVAL:
+		if (arg.num < 0 || arg.num >= sqa->total_sems) {
+			errno = EINVAL;
+			return EINVAL;
+		}
+		errno = ENONE;
+		return (sqa->first + arg.num)->val;
+		break;
+	case SETVAL:
+		if (arg.num < 0 || arg.num >= sqa->total_sems) {
+			errno = EINVAL;
+			return EINVAL;
+		}
+		/* If we have a upper limit? */
+		if (args.val < 0) {
+			errno = ERANGE;
+			return ERANGE;
+		}
+		(sqa->first + arg.num)->val = args.val;
+		break;
+	case GETPID:
+		if (arg.num < 0 || arg.num >= sqa->total_sems) {
+			errno = EINVAL;
+			return EINVAL;
+		}
+		errno = ENONE;
+		/* FIXME */
+		return (sqa->first + arg.num)->lopid;
+		break;
+	case GETNCNT:
+		if (arg.num < 0 || arg.num >= sqa->total_sems) {
+			errno = EINVAL;
+			return EINVAL;
+		}
+		/* FIXME: How to tell the difference? Maybe return on the stack?
+		 * Or return in the process structure? */
+		errno = ENONE;
+		return (sqa->first + arg.num)->ncount;
+		break;
+	case GETZCNT:
+		if (arg.num < 0 || arg.num >= sqa->total_sems) {
+			errno = EINVAL;
+			return EINVAL;
+		}
+		errno = ENONE;
+		return (sqa->first + arg.num)->zcount;
+		break;
+	case GETALL:
+		int count = sqa->total_sems;
+		uint16_t *array = NULL;
+		if ((array = (uint16_t *)malloc(sizeof(*array) * count)) == NULL)
+			return ENOMEM;
+		for (i = 0; i < sqa->total_sems; i++)
+			array[i] = (sqa->first + i)->val;
+		/* FIXME */
+		memcpy(args.array, array, count * sizeof(*array));
+		break;
+	case SETALL:
+		int count = sqa->total_sems;
+		uint16_t *array = NULL;
+		uint16_t value;
+		if ((array = (uint16_t *)malloc(sizeof(*array) * count)) == NULL)
+			return ENOMEM;
+		/* FIXME */
+		memcpy(array, args.array, count * sizeof(*array));
+		for (i = 0; i < sqa->total_sems; i++) {
+			/* We should check the upper limit? */
+			value = array[i];
+			/* TODO: Check it! */
+			(sqa->first + i)->val = value;
+		}
+		break;
+	default:
+		return EINVAL;
+	}
+
+	switch (cmd) {
+	case IPC_STAT:
+		/* FIXME */
+		memcpy(sqa, arg.attr, sizeof(*sqa));
+		break;
+	}
 }
 
 void *shm_at(int shm_id, const void *addr, mode_t flag)
@@ -689,6 +798,7 @@ error:
 	return -1;
 }
 
+/* Different in different os, choose one. */
 int shm_ctrl(int shm_id, int cmd, shm_queue_attr attr)
 {
 	switch (cmd) {
@@ -703,17 +813,15 @@ int shm_ctrl(int shm_id, int cmd, shm_queue_attr attr)
 	case SHM_UNLOCK:
 		break;
 	default:
-		goto done2;
+		return EINVAL;
 	}
-
-done2:
-	return EINVAL;
 }
 
 int ipc_init()
 {
 	mqueue_attr = NULL;
 	semqueue_attr = NULL;
+	/* FIXME */
 	memset(sems, 0, sizeof(struct sem) * MAX_SEMS);
 	shmqueue_attr = NULL;
 	if (errno = memory_alloc(shm_pool, MAX_SHMS))

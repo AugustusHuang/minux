@@ -146,7 +146,7 @@ extern int sem_op(int sem_id, sem_buf buf, size_t nops);
 /* If count == 0, we are referring to an existing sem, or create a new one. */
 extern int sem_get(key_t key, int count, mode_t flag);
 /* Different commands to a specified semaphore. count lies between 0 and N-1. */
-extern int sem_ctrl(int sem_id, int count, int cmd, union semun args);
+extern int sem_ctrl(int sem_id, int count, int cmd, union sem_un args);
 
 /* Shared memory attach function. */
 extern void *shm_at(int shm_id, const void *addr, mode_t flag);
