@@ -19,6 +19,7 @@ int msg_send(int msg_id, const void *ptr, size_t size, mode_t flag)
 	msg_queue_attr mqa;
 	msg message, head;
 	msg last_message == NULL;
+	msize = size;
 	int i;
 
 	if (msg_id < 0)
@@ -83,17 +84,18 @@ int msg_send(int msg_id, const void *ptr, size_t size, mode_t flag)
 
 	/* Initialize the message body with content pointed by 'ptr'.
 	 * The list will have form msg1->msg2->msg3... */
-	while (size > 0) {
+	while (msize > 0) {
 		size_t len;
 
 		if ((message = (msg)malloc(sizeof(struct msg))) == NULL)
 			return ENOMEM;
-		if (size > MAX_MSGS)
+		if (msize > MAX_MSGS)
 			len = MAX_MSGS;
 		else
-			len = size;
+			len = msize;
+		/* FIXME: What if it fails?  */
 		memcpy(message->text, ptr, len);
-		size -= len;
+		msize -= len;
 		ptr = (const char *)ptr + len;
 
 		if (last_message == NULL) {
@@ -141,7 +143,7 @@ int msg_recv(int msg_id, void *ptr, size_t size, mode_t flag)
 {
 	msg_queue_attr mqa;
 	msg message;
-	size_t len = 0;
+	size_t len = 0, msize = size;
 	int i;
 
 	if (msg_id < 0)
@@ -198,17 +200,18 @@ int msg_recv(int msg_id, void *ptr, size_t size, mode_t flag)
 	mqa->last_rpid = curproc->pid;
 	mqa->rtime = curtime;
 
-	if (size > len)
-		size = len;
+	if (msize > len)
+		msize = len;
 
-	for (len = 0, message = mqa->first; len < size;
+	for (len = 0, message = mqa->first; len < msize;
 			len += MAX_MSGS, message = message->next) {
 		size_t tlen;
 
-		if (size - len > MAX_MSGS)
+		if (msize - len > MAX_MSGS)
 			tlen = MAX_MSGS;
 		else
-			tlen = size - len;
+			tlen = msize - len;
+		/* FIXME: What if it fails? */
 		memcpy(ptr, message->text, tlen);
 	}
 
@@ -364,6 +367,109 @@ int msg_ctrl(int msg_id, int cmd, msg_queue_attr attr)
 
 int sem_op(int sem_id, sem_buf buf, size_t nops)
 {
+	sem_queue_attr sqa;
+	sem_buf sops, sop_iter;
+	sem semptr = 0;
+	size_t j;
+	int i, do_undos;
+
+	if (sem_id < 0)
+		return EINVAL;
+
+	for (i = 0, sqa = semqueue_attr; i < sem_id; i++, sqa = sqa->next);
+
+	if (sqa == NULL)
+		return EINVAL;
+
+	/* We found what we want. */
+	sops = (sem_buf)malloc(sizeof(struct sem_buf) * nops);
+
+	/* FIXME: What if it fails? */
+	memcpy(sops, buf, nops * sizeof(struct sem_buf));
+
+	if ((sqa->sem_ipc.mode & SEM_ALLOC) == 0)
+		return EINVAL;
+
+	j = 0;
+	do_undos = 0;
+	for (i = 0, sop_iter = &sops; i < nops; i++, sop_iter++) {
+		if (sop_iter->num >= sqa->total_sems)
+			return EFBIG;
+		if (sop_iter->flag & SEM_UNDO && sop_iter->op != 0)
+			do_undos = 1;
+		j |= (sop_iter->op == 0) ? SEM_R : SEM_A;
+	}
+
+	for (;;) {
+		for (i = 0, sop_iter = &sops; i < nops; i++, sop_iter++) {
+			/* As a whole, the global semaphore array:
+			 * +-------------------------------------+..+
+			 * | | | | | | | | | | | | | | | | | | | |  |
+			 * +-------------------------------------+..+
+			 *  ^       ^               ^   ^
+			 *  |       |               |   |
+			 * sqa1    sqa2            sqa3 sem_ptr
+			 * ->first ->first         ->first
+			 */
+			semptr = sqa->first + sop_iter->num;
+			if (sop_iter->op < 0) {
+				if (semptr->val + sop_iter->op < 0)
+					break;
+				else
+					semptr->val += sop_iter->op;
+			} else if (sop_iter->op == 0) {
+				if (semptr->val != 0)
+					break;
+			} else
+				semptr->val += sop_iter->op;
+		}
+
+		if (i >= nops)
+			goto done;
+
+		for (j = 0; j < i; j++)
+			sqa->first[sops[j].num].val -= sops[j].op;
+
+		/* Not allowed to wait. */
+		if (sop_iter->flag & IPC_NOWAIT)
+			return EAGAIN;
+
+		if (sop_iter->op == 0)
+			semptr->zcount++;
+		else
+			semptr->ncount++;
+#if 0
+		errno = sem_sleep(sqa);
+#endif
+		if ((saq->sem_ipc.mode & SEM_ALLOC) == 0)
+			return EIDRM;
+
+		semptr = &saq->first[sop_iter->num];
+		/* It's alive so adjust it. */
+		if (sop_iter->op == 0)
+			semptr->zcount--;
+		else
+			semptr->ncount--;
+
+		if (errno != 0) {
+			errno = EINTR;
+			return EINTR;
+		}
+	}
+
+done:
+	/* FIXME: Shall we support sem_undo lock? */
+	if (do_undos) {
+	}
+
+	for (i = 0; i < nops; i++) {
+		sop_iter = &sops[i];
+		semptr = &sqa->first[sop_iter->num];
+		semptr->lopid = curproc->pid;
+	}
+	sqa->otime = curtime;
+
+	return ENONE;
 }
 
 /* Return a sem_id */

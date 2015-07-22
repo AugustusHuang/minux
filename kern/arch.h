@@ -88,5 +88,10 @@
 #define ARCH_CID2        0xe000eff8
 #define ARCH_CID3        0xe000effc
 #define ARCH_SCS_END     0xe000efff
+
+/* TODO: Prototype of a stack init function,
+ * since different architectures will have different groups of registers,
+ * we have to put it here. */
+extern int process_stack_init();
  
 #endif
