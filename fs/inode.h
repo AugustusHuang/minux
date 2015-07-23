@@ -6,7 +6,7 @@
 typedef struct fs_inode *fs_inode;
 struct fs_inode {
 	void *addr; /* address of file inode */
-	int32_t magic;
+	int32_t magic1;
 	mode_t flag;
 	tm_t ctime; /* create time */
 	tm_t mtime; /* last modify time */
@@ -15,10 +15,13 @@ struct fs_inode {
 	int32_t size; /* inode size */
 	struct data_stream data; /* data stream type */
 	inode_etc etc; /* etc pointer */
-	struct attr_map map[1]; /* the rest of inode space will be attributes */
+	int32_t magic2;
+	int32_t pad[6]; /* will be 0 */
+	/* the rest of inode space will be attributes */
 };
 
-#define INODE_MAGIC 0x494E4F44 /* INOD */
+#define INODE_MAGIC1   0x494E4F44 /* INOD */
+#define INODE_MAGIC2   0x48673138 /* Hg18, I mean Hangar 18. */
 
 /* flag arguments */
 #define INODE_INUSE    0x00000001 /* whether inode is active */
@@ -32,5 +35,6 @@ struct fs_inode {
 
 /* create routine of a new inode */
 extern int inode_create();
+extern int inode_delete();
 
 #endif

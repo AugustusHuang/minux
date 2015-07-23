@@ -6,24 +6,35 @@
 #include "dir.h"
 #include "file.h"
 #include "journal.h"
+#include "bit.h"
 #include "mount.h"
-#include "tag.h"
+#include "attr.h"
 #include "util.h"
+#include "config.h"
+#include "../kern/config.h"
 
 typedef off_t fs_off_t;
 
+#if WORDSIZE_CONFIG == 32
+#define DIRECT_BLOCKS 20
+#elif WORDSIZE_CONFIG == 64
+#define DIRECT_BLOCKS 16
+#else
+#error word size doesn't supported.
+#endif
+
 /* +--------------------+
- * | uint32_t      type | 
+ * | uint32_t      type |
  * +--------------------+
- * | name len | val len |
- * +---------------------
+ * | union        value |
+ * +--------------------+
+ * | uint16_t  name_len |
+ * +--------------------+
  * |       name[0]      |
- * ......................-------------- struct border
- * |        name        |
- * +--------------------+
- * |        value       |
- * ......................
- * |        value       |
+ * +....................+
+ * |      name[1..]     |
+ * +....................+
+ * |  maybe value then  |
  * +--------------------+
  * Though value is not inside the structure, it will be there right after
  * the name string of the corresponding structure.
@@ -32,21 +43,32 @@ typedef off_t fs_off_t;
  * TODO: Use union or not? */
 typedef struct attr_map *attr_map;
 struct attr_map {
-	uint32_t attr_type;
-	uint16_t attr_name_len;
-	uint16_t attr_value_len;
+	uint32_t type;
+	union attr_value value;
+	uint16_t name_len;
 	char attr_name[1];
 };
 
-#define ATTR_RAW  0U
-#define ATTR_U8   1U
-#define ATTR_I8   2U
-#define ATTR_U16  3U
-#define ATTR_I16  4U
-#define ATTR_U32  5U
-#define ATTR_I32  6U
-#define ATTR_U64  7U
-#define ATTR_I64  8U
+union attr_value {
+	struct {
+		void *ptr;
+		uint16_t len;
+	} raw;
+	uint32_t u32;
+	int32_t  i32;
+	uint64_t u64;
+	int64_t  i64;
+	float    f;
+	double   d;
+};
+
+#define ATTR_RAW    0U
+#define ATTR_U32    1U
+#define ATTR_I32    2U
+#define ATTR_U64    3U
+#define ATTR_I64    4U
+#define ATTR_FLOAT  5U
+#define ATTR_DOUBLE 6U
 
 /* map is a pointer to struct attr_map */
 #define inode_attr_data(map) \
@@ -78,22 +100,42 @@ struct fs_superblock {
 	int32_t flag; /* clean or not */
 };
 
-/* data_stream type in inode. TODO: Is triple indirect level necessary? */
+/* data_stream type in inode. 
+ * Inode must be a power of two in size,
+ * here data_stream has 8 * DIRECT_BLOCKS + 16 + sizeof(off_t) * 4
+ * TODO: Is triple indirect level necessary? */
 typedef struct data_stream *data_stream;
 struct data_stream {
-	block_run direct[DIRECT_BLOCKS_CONFIG];
+	struct block_run direct[DIRECT_BLOCKS];
 	fs_off_t max_d_range; /* maximal direct block range */
-	block_run single_indirect;
+	struct block_run single_indirect;
 	fs_off_t max_si_range; /* maximal single indirect block range */
-	block_run double_indirect;
+	struct block_run double_indirect;
 	fs_off_t max_di_range; /* maximal double indirect block range */
 	fs_off_t size;
+};
+
+/* Get the idea from BFS by Dominic Giampaolo.
+ * +-------------------+-------------------+-...-+
+ * |     N blocks      |                   |     | All blocks
+ * +-------------------+-------------------+-...-+
+ * | allocation grp 1  | allocation grp 2  |     |
+ * +-------------------+-------------------+-...-+
+ *    ^           ^
+ *    |<-  len  ->|
+ *  start */
+
+typedef struct block_run *block_run;
+struct block_run {
+	uint32_t allocation_group; /* a virtual concept */
+	uint16_t start;
+	uint16_t len;
 };
 
 /* inode etc type */
 typedef struct inode_etc *inode_etc;
 struct inode_etc {
-	lock lock; /* r/w/a lock of this inode */
+	lock lock; /* r/w/a lock of this inode TODO: Used in kernel? */
 	char *content;
 	int counter;
 };
