@@ -1,0 +1,23 @@
+TODO list of u3x system:
+1. A user/kernel seperation to prevent mal-users.
+	1.1. One single anonymous user or multi-users?
+
+2. Choices of memory management implementation data structure.
+	2.1. Linked list or buddy system?
+	2.2. Virtual machine pager?
+
+3. Choices of file system attributes implementation.
+	3.1. Use union or straightforward one?
+	3.2. How to make them searchable and accessible by IoT?
+
+4. A micro TCP/UDP/IPv6 stack, and its companion.
+	4.1. Buffered I/O in the kernel or in the net module?
+	4.2. Power consuming low, which standard?
+	4.3. Mobile IPv6 re-write?
+
+5. Interaction between terminal node and embedding nodes.
+	5.1. How to make such layer canonical?
+	5.2. Then, PaaS?
+
+6. POSIX compatible API.
+	6.1. If some arguments are not needed, how to handle them, simple ignore?
