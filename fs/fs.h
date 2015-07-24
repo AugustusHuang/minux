@@ -140,6 +140,13 @@ struct inode_etc {
 	int counter;
 };
 
+/* Our file system header. */
+typedef struct fs_header *fs_header;
+struct fs_header {
+	fs_superblock sb;
+	/* FIXME: et cetera */
+};
+
 #define SUPER_MAGIC1 0x75787878 /* uxxx */
 #define SUPER_MAGIC2 0x52544F53 /* RTOS */
 
