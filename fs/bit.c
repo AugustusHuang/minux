@@ -66,21 +66,63 @@ int bit_vector_set_m(bit_vector bv, int from, int to)
 
 	if (bv->free == from) {
 		/* The next free one will be search from 'to'th slot. */
-		for (i = to / sizeof(int); i < bv->len / sizeof(int); i++)
+		for (j = to % sizeof(int) + 1; j < sizeof(int); j++)
+			if (bv->vec[to / sizeof(int)] | 1 << j == 0)
+				bv->free = to / sizeof(int) * sizeof(int) + j;
+
+		for (i = to / sizeof(int) + 1; i < bv->len / sizeof(int); i++)
+			for (j = 0; j < sizeof(int); j++)
+				if (bv->vec[i] | 1 << j == 0)
+					bv->free = i * sizeof(int) + j;
 	}
 
 	for (i = from; i < to; i++)
+		bv->vec[i / sizeof(int)] |= (1 << (i % sizeof(int)));
+
+	return ENONE;
 }
 
 int bit_vector_unset_m(bit_vector bv, int from, int to)
 {
+	int i;
+
+	if (from < 0 || to < 0 || from >= bv->len || to >= bv->len || from > to)
+		return EINVAL;
+
+	for (i = from; i < to; i++)
+		bv->vec[i / sizeof(int)] &= ~(1 << (i % sizeof(int)));
+
+	if (bv->free > to)
+		bv->free = from;
+
+	return ENONE;
 }
 
+/* Return 0 if all 0, 1 if some of them are 1. */
 int bit_vector_query_m(bit_vector bv, int from, int to)
 {
+	int i, mask;
+
+	if (from < 0 || to < 0 || from >= bv->len || to >= bv->len || from > to)
+		return EINVAL;
+
+	/* The first free bit is behind 'to', so 'to'th can't be free. */
+	if (bv->free > to)
+		return 1;
+
+	for (i = from; i < to; i++) {
+		mask = 1 << (i % sizeof(int));
+		if (bv->vec[i / sizeof(int)] & mask)
+			/* If any one of them is 1, return 1. */
+			return 1;
+	}
+
+	/* Not no error, but value 0. */
+	return 0;
 }
 
-int bit_vector_get_longest(bit_vector bv)
+/* Longest head and tail will returned in from and to pointers. */
+int bit_vector_get_longest(bit_vector bv, int *from, int *to)
 {
 }
 

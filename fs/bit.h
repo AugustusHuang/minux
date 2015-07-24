@@ -20,6 +20,6 @@ extern int bit_vector_unset_m(bit_vector bv, int from, int to);
 extern int bit_vector_query_m(bit_vector bv, int from, int to);
 
 /* Get the longest free partition of a bit vector. */
-extern int bit_vector_get_longest(bit_vector bv);
+extern int bit_vector_get_longest(bit_vector bv, int *from, int *to);
 
 #endif
