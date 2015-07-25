@@ -11,7 +11,8 @@
 #include "attr.h"
 #include "util.h"
 #include "config.h"
-#include "../kern/config.h"
+#include "../vfs/vfs.h"
+#include "../../kern/config.h"
 
 typedef off_t fs_off_t;
 
@@ -138,6 +139,12 @@ struct inode_etc {
 	lock lock; /* r/w/a lock of this inode TODO: Used in kernel? */
 	char *content;
 	int counter;
+};
+
+typedef struct block_bit_map *block_bit_map;
+struct block_bit_map {
+	bit_vector bv;
+	fs_off_t blocks;
 };
 
 /* Our file system header. */

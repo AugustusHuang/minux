@@ -9,6 +9,14 @@
 #define VLNK  5
 #define VSOCK 6
 #define VBAD  7
+
+typedef unsigned long nspace_id;
+typedef long long vnode_id;
+typedef struct nspace_info *nspace_info;
+struct nspace_info {
+	vnode_id root;
+};
+
 typedef struct vfs *vfs;
 struct vfs {
 	vfs next; /* next vfs */
@@ -47,6 +55,29 @@ struct vnode {
 	int type; /* type */
 	void *data;
 };
+
+/* +----+     +----+     +----+     +----+
+ * | n1 |next>| n2 |next>| n3 |next>| n4 |
+ * |    |<prev|    |<prev|    |<prev|    |
+ * +----+     +----+     +----+     +----+
+ *  head                             tail
+ *                count = 4
+ */
+typedef struct vnlist *vnlist;
+struct vnlist {
+	vnode head;
+	vnode tail;
+	int count;
+};
+
+typedef struct vnlink *vnlink;
+struct vnlink {
+	vnode prev;
+	vnode next;
+};
+
+/* Vnode layer functions. */
+typedef int v_read_vnode(void *nspace, vnode_id vid, char r, void *vnode);
 
 typedef struct vnodeops *vnodeops;
 struct vnodeops {
