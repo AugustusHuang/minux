@@ -150,8 +150,13 @@ struct block_bit_map {
 /* Our file system header. */
 typedef struct fs_header *fs_header;
 struct fs_header {
-	fs_superblock sb;
-	/* FIXME: et cetera */
+	nspace_id nsid; /* upper level id */
+	struct fs_superblock sb;
+	struct block_bit_map bbm; /* block bit map */
+	struct bit_vector ibv; /* inode bit vector */
+	int flag;
+	int fd;
+	/* et cetera */
 };
 
 #define SUPER_MAGIC1 0x75787878 /* uxxx */

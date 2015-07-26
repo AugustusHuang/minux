@@ -28,7 +28,7 @@ main(int argc, char **argv)
 {
     int        seed;
     char      *disk_name = "testbed";
-    mfs_info  *mfs;
+    fs_header  mfs;
 
     if (argv[1] != NULL && !isdigit(argv[1][0]))
         disk_name = argv[1];
@@ -54,10 +54,11 @@ main(int argc, char **argv)
     return 0;   
 }
 
+/* TODO: Should we make it more randomly? */
 static void
 make_random_name(char *buf, int len)
 {
-    int i, max = (rand() % (len - 5 - 3)) + 2;
+    int i, max = (rand() % (len - 8)) + 2;
 
     strcpy(buf, "/mfs/");
     for(i = 0; i < max; i++) {
@@ -85,7 +86,7 @@ static void do_close(int argc, char **argv)
 {
     int err;
 
-    err = sys_close(1, cur_fd);
+    err = sys_close(cur_fd);
     cur_fd = -1;
 }
 
@@ -102,14 +103,14 @@ static void do_open(int argc, char **argv)
     else
         sprintf(name, "/mfs/%s", &argv[1][0]);
 
-    cur_fd = sys_open(1, -1, name, O_RDWR, MY_S_IFREG, 0);
+    cur_fd = sys_open(-1, name, O_RDWR, MY_S_IFREG, 0);
     if (cur_fd < 0)
         printf("error opening %s : %s (%d)\n", name, strerror(cur_fd), cur_fd);
     else
         printf("opened: %s\n", name);
 }
 
-static void do_make(int argc, char **argv)
+static void do_mk(int argc, char **argv)
 {
     int err;
     char name[64], buff[64];
@@ -124,7 +125,7 @@ static void do_make(int argc, char **argv)
     else
         strcpy(name, &argv[1][0]);
 
-    cur_fd = sys_open(1, -1, name, O_RDWR|O_CREAT, 0666, 0);
+    cur_fd = sys_open(-1, name, O_RDWR|O_CREAT, 0666, 0);
     if (cur_fd < 0) {
         printf("error creating: %s: %s\n", name, strerror(cur_fd));
         return;
@@ -141,9 +142,24 @@ static void do_mkdir(int argc, char **argv)
     else
         sprintf(name, "/mfs/%s", &argv[1][0]);
 
-    err = sys_mkdir(1, -1, name, MY_S_IRWXU);
+    err = sys_mkdir(-1, name, MY_S_IRWXU);
     if (err)
         printf("mkdir of %s returned: %s (%d)\n", name, strerror(err), err);
+}
+
+static void do_chdir(int argc, char **argv)
+{
+	int err;
+	char name[64];
+
+	if (argc < 2)
+		sprintf(name, "/mfs/");
+	else
+		sprintf(name, "/mfs/%s", &argv[1][0]);
+
+	err = sys_chdir(-1, name);
+	if (err)
+		printf("cd to %s returned: %s (%d)\n", name, strerror(err), err);
 }
 
 static void do_read_test(int argc, char **argv)
@@ -169,7 +185,7 @@ static void do_read_test(int argc, char **argv)
     for(i = 0; i < len; i++)
         buff[i] = (char)0xff;
 
-    err = sys_read(1, cur_fd, buff, len);
+    err = sys_read(cur_fd, buff, len);
     
     if (len < 512)
         hexdump(buff, len);
@@ -203,7 +219,7 @@ static void do_write_test(int argc, char **argv)
     for(i = 0; i < len; i++)
         buff[i] = i;
 
-    err = sys_write(1, cur_fd, buff, len);
+    err = sys_write(cur_fd, buff, len);
     free(buff);
     
     printf("write wrote %d bytes and returned %d\n", len, err);
@@ -234,23 +250,23 @@ static void mode_bits_to_str(int mode, char *str)
     }
 }
 
-static void do_dir(int argc, char **argv)
+static void do_ls(int argc, char **argv)
 {
     int               dirfd, err, fd, max_err = 10;
     char              dirname[128], buff[512], time_buf[64] = { '\0', };
     size_t            len;
-    struct fs_dirent *dent;
+    fs_dirent         dent;
     struct fs_stat    st;
     struct tm        *tm;
     char              mode_str[16];
     
-    dent = (struct fs_dirent *)buff;
+    dent = (fs_dirent)buff;
 
     strcpy(dirname, "/mfs/");
     if (argc > 1)
         strcat(dirname, &argv[1][0]);
 
-    if ((dirfd = sys_opendir(1, -1, dirname, 0)) < 0) {
+    if ((dirfd = sys_opendir(-1, dirname, 0)) < 0) {
         printf("dir: error opening: %s\n", dirname);
         return;
     }
@@ -261,7 +277,7 @@ static void do_dir(int argc, char **argv)
                   
     while (1) {
         len = 1;
-        err = sys_readdir(1, dirfd, dent, sizeof(buff), len);
+        err = sys_readdir(dirfd, dent, sizeof(buff), len);
         if (err < 0) {
             printf("readdir failed for: %s\n", dent->d_name);
             if (max_err-- <= 0)
@@ -273,7 +289,7 @@ static void do_dir(int argc, char **argv)
         if (err == 0)
             break;
 
-        err = sys_rstat(1, dirfd, dent->d_name, &st, 1);
+        err = sys_rstat(dirfd, dent->d_name, &st, 1);
         if (err != 0) {
             printf("stat failed for: %s (%ld)\n", dent->d_name, dent->d_ino);
             if (max_err-- <= 0)
@@ -294,7 +310,7 @@ static void do_dir(int argc, char **argv)
         printf("readdir failed on: %s\n", dent->d_name);
     }
 
-    sys_closedir(1, dirfd);
+    sys_closedir(dirfd);
 }
 
 static void do_rmall(int argc, char **argv)
@@ -302,24 +318,24 @@ static void do_rmall(int argc, char **argv)
     int               dirfd, err, fd, max_err = 10;
     char              dirname[128], fname[512], buff[512];
     size_t            len;
-    struct fs_dirent *dent;
+    fs_dirent         dent;
     struct fs_stat    st;
     struct tm        *tm;
     
-    dent = (struct fs_dirent *)buff;
+    dent = (fs_dirent)buff;
 
     strcpy(dirname, "/mfs/");
     if (argc > 1)
         strcat(dirname, &argv[1][0]);
 
-    if ((dirfd = sys_opendir(1, -1, dirname, 0)) < 0) {
+    if ((dirfd = sys_opendir(-1, dirname, 0)) < 0) {
         printf("dir: error opening: %s\n", dirname);
         return;
     }
 
     while (1) {
         len = 1;
-        err = sys_readdir(1, dirfd, dent, sizeof(buff), len);
+        err = sys_readdir(dirfd, dent, sizeof(buff), len);
         if (err < 0) {
             printf("readdir failed for: %s\n", dent->d_name);
             if (max_err-- <= 0)
@@ -334,7 +350,7 @@ static void do_rmall(int argc, char **argv)
             continue;
 
         sprintf(fname, "%s/%s", dirname, dent->d_name);
-        err = sys_unlink(1, -1, fname);
+        err = sys_unlink(-1, fname);
         if (err != 0) {
             printf("unlink failed for: %s (%ld)\n", fname, dent->d_ino);
         }
@@ -344,7 +360,7 @@ static void do_rmall(int argc, char **argv)
         printf("readdir failed on: %s\n", dent->d_name);
     }
 
-    sys_closedir(1, dirfd);
+    sys_closedir(dirfd);
 }
 
 static void do_trunc(int argc, char **argv)
@@ -362,7 +378,7 @@ static void do_trunc(int argc, char **argv)
     new_size = strtoul(&argv[2][0], NULL, 0);
 
     st.size = new_size;
-    err = sys_wstat(1, -1, fname, &st, WSTAT_SIZE, 0);
+    err = sys_wstat(-1, fname, &st, WSTAT_SIZE, 0);
     if (err != 0) {
         printf("truncate to %d bytes failed for %s\n", new_size, fname);
     }
@@ -385,7 +401,7 @@ static void do_seek(int argc, char **argv)
 
     pos = strtoul(&argv[1][0], NULL, 0);
 
-    err = sys_lseek(1, cur_fd, pos, SEEK_SET);
+    err = sys_lseek(cur_fd, pos, SEEK_SET);
     if (err != pos) {
         printf("seek to %ld failed (%ld)\n", pos, err);
     }
@@ -406,7 +422,7 @@ static void do_rm(int argc, char **argv)
 
     sprintf(name, "/mfs/%s", &argv[1][0]);
     
-    err = sys_unlink(1, -1, name);
+    err = sys_unlink(-1, name);
     if (err != 0) {
         printf("error removing: %s: %s\n", name, strerror(err));
         return;
@@ -428,7 +444,7 @@ static void do_rmdir(int argc, char **argv)
 
     sprintf(name, "/mfs/%s", &argv[1][0]);
     
-    err = sys_rmdir(1, -1, name);
+    err = sys_rmdir(-1, name);
     if (err != 0) {
         printf("rmdir: error removing: %s: %s\n", name, strerror(err));
         return;
@@ -451,21 +467,21 @@ static void do_copy_to_mfs(char *host_file, char *bfile)
         return;
     }
         
-    if ((bfd = sys_open(1, -1, mfs_name, O_RDWR|O_CREAT,
+    if ((bfd = sys_open(-1, mfs_name, O_RDWR|O_CREAT,
                         MY_S_IFREG|MY_S_IRWXU, 0)) < 0) {
         fclose(fp);
-        printf("error opening: %s\n", myfs_name);
+        printf("error opening: %s\n", mfs_name);
         return;
     }
     
     while((amt = fread(buff, 1, sizeof(buff), fp)) == sizeof(buff)) {
-        err = sys_write(1, bfd, buff, amt);
+        err = sys_write(bfd, buff, amt);
         if (err < 0)
             break;
     }
 
     if (amt && err >= 0) {
-        err = sys_write(1, bfd, buff, amt);
+        err = sys_write(bfd, buff, amt);
     }
 
     if (err < 0) {
@@ -473,7 +489,7 @@ static void do_copy_to_mfs(char *host_file, char *bfile)
         perror("write error");
     }
 
-    sys_close(1, bfd);
+    sys_close(bfd);
     fclose(fp);
 }
 
@@ -493,7 +509,7 @@ static void do_copy_from_mfs(char *bfile, char *host_file)
         return;
     }
         
-    if ((bfd = sys_open(1, -1, mfs_name, O_RDONLY, MY_S_IFREG, 0)) < 0) {
+    if ((bfd = sys_open(-1, mfs_name, O_RDONLY, MY_S_IFREG, 0)) < 0) {
         fclose(fp);
         printf("error opening: %s\n", mfs_name);
         return;
@@ -501,7 +517,7 @@ static void do_copy_from_mfs(char *bfile, char *host_file)
     
     while(1) {
         amt = sizeof(buff);
-        err = sys_read(1, bfd, buff, amt);
+        err = sys_read(bfd, buff, amt);
         if (err < 0)
             break;
 
@@ -512,7 +528,7 @@ static void do_copy_from_mfs(char *bfile, char *host_file)
     if (err < 0)
         perror("read error");
 
-    sys_close(1, bfd);
+    sys_close(bfd);
     fclose(fp);
 }
 
@@ -560,7 +576,7 @@ static void do_rename(int argc, char **argv)
     strcat(oldname, &argv[1][0]);
     strcat(newname, &argv[2][0]);
 
-    err = sys_rename(1, -1, oldname, -1, newname);
+    err = sys_rename(-1, oldname, -1, newname);
     if (err)
         printf("rename failed with err: %s\n", strerror(err));
 }
@@ -594,7 +610,7 @@ static void do_cio(int argc, char **argv)
     else
         strcat(fname, &argv[1][0]);
     
-    fd = sys_open(1, -1, fname, O_RDONLY, MY_S_IFREG, 0);
+    fd = sys_open(-1, fname, O_RDONLY, MY_S_IFREG, 0);
     if (fd < 0) {
         printf("can't open %s\n", fname);
         return;
@@ -605,14 +621,14 @@ static void do_cio(int argc, char **argv)
     for(i = 0; i < MAX_ITER; i++) {
         for(j = 0; j < NUM_READS; j++) {
             len = sizeof(buff);
-            if (sys_read(1, fd, buff, len) != len) {
+            if (sys_read(fd, buff, len) != len) {
                 perror("cio read");
                 break;
             }
         }
 
         pos = 0;
-        if (sys_lseek(1, fd, pos, SEEK_SET) != pos) {
+        if (sys_lseek(fd, pos, SEEK_SET) != pos) {
             perror("cio lseek");
             break;
         }
@@ -625,15 +641,15 @@ static void do_cio(int argc, char **argv)
            (MAX_ITER * NUM_READS * sizeof(buff)) / 1024,
            result.tv_sec, result.tv_usec);
 
-    sys_close(1, fd);
+    sys_close(fd);
 }
 
 static void mkfile(char *s, int sz)
 {
     int  fd, len;
-    char buf[16*1024];
+    char buf[16 * 1024];
 
-    if ((fd = sys_open(1, -1, s, O_RDWR|O_CREAT,
+    if ((fd = sys_open(-1, s, O_RDWR|O_CREAT,
                        MY_S_IFREG|MY_S_IRWXU, 0)) < 0) {
         printf("error creating: %s\n", s);
         return;
@@ -641,10 +657,10 @@ static void mkfile(char *s, int sz)
 
     len = sz;
     if (sz) {
-        if (sys_write(1, fd, buf, len) != len)
+        if (sys_write(fd, buf, len) != len)
             printf("error writing %d bytes to %s\n", sz, s);
     }
-    if (sys_close(1, fd) != 0)
+    if (sys_close(fd) != 0)
         printf("close failed?\n");
 }
 
@@ -672,7 +688,7 @@ static void do_lat_fs(int argc, char **argv)
         printf("DELETING: %d files of %5d bytes each\n", iter, sizes[i]);
         for (j = 0; j < iter; ++j) {
             sprintf(name, "/mfs/%.5d", j);
-            if (sys_unlink(1, -1, name) != 0)
+            if (sys_unlink(-1, name) != 0)
                 printf("lat_fs: failed to remove: %s\n", name);
         }
     }
@@ -685,7 +701,7 @@ static void do_create(int argc, char **argv)
     char name[64];
 
     sprintf(name, "/mfs/test");
-    err = sys_mkdir(1, -1, name, MY_S_IRWXU);
+    err = sys_mkdir(-1, name, MY_S_IRWXU);
     if (err && err != EEXIST)
         printf("mkdir of %s returned: %s (%d)\n", name, strerror(err), err);
 
@@ -709,18 +725,14 @@ static void do_delete(int argc, char **argv)
     char name[64];
 
     if (argc > 1)
-        iter =strtoul(&argv[1][0], NULL, 0);
+        iter = strtoul(&argv[1][0], NULL, 0);
 
     for (j = 0; j < iter; ++j) {
         sprintf(name, "/mfs/test/%.5d", j);
         printf("DELETING: %s\n", name);
-        if (sys_unlink(1, -1, name) != 0)
+        if (sys_unlink(-1, name) != 0)
             printf("lat_fs: failed to remove: %s\n", name);
     }
-}
-
-static void do_chdir(int argc, char **argv)
-{
 }
 
 static void do_help(int argc, char **argv);
@@ -734,9 +746,9 @@ typedef struct cmd_entry {
 cmd_entry fsh_cmds[] =
 {
 	{ "cd",      do_chdir, "change to a new directory, default is root" },
-    { "ls",      do_dir, "print a directory listing" },
+    { "ls",      do_ls, "print a directory listing" },
     { "open",    do_open, "open an existing file for read/write access" },
-    { "make",    do_make, "create a file (optionally specifying a name)" },
+    { "make",    do_mk, "create a file (optionally specifying a name)" },
     { "close",   do_close, "close the currently open file" },
     { "mkdir",   do_mkdir, "create a directory" },
     { "rdtest",  do_read_test, "read N bytes from the current file. default is 256" },

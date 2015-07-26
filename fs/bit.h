@@ -8,7 +8,6 @@ struct bit_vector {
 	int *vec;
 };
 
-extern int bit_vector_init(int len);
 /* One bit version of bit vector manipulation. */
 extern int bit_vector_set(bit_vector bv, int index);
 extern int bit_vector_unset(bit_vector bv, int index);
@@ -19,7 +18,7 @@ extern int bit_vector_set_m(bit_vector bv, int from, int to);
 extern int bit_vector_unset_m(bit_vector bv, int from, int to);
 extern int bit_vector_query_m(bit_vector bv, int from, int to);
 
-/* Get the longest free partition of a bit vector. */
-extern int bit_vector_get_longest(bit_vector bv, int *from, int *to);
+/* Get the free partition of a bit vector. */
+extern int bit_vector_get_free(bit_vector bv, int len);
 
 #endif
