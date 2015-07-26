@@ -1,6 +1,8 @@
 #ifndef FS_VFS_H
 #define FS_VFS_H
 
+#include "sys.h"
+
 #define VNON  0
 #define VREG  1
 #define VDIR  2
@@ -104,5 +106,7 @@ struct vnodeops {
 	int (*vn_bread)();
 	int (*vn_brelse)();
 };
+
+extern int vnode_init();
 
 #endif
