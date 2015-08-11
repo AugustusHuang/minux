@@ -422,51 +422,24 @@ static process process_alloc(uint32_t stack_size)
 	process new_proc;
 	LSR();
 
-#if (STACK_GROWTH == 1)
-	{
-		INTR_DISABLE();
+	INTR_DISABLE();
+	error = memory_alloc(mem2, stack_size);
+
+	if (!error) {
+		/* Stack allocation succeed. */
 		error = memory_alloc(mem, sizeof(struct process));
-		
+
 		if (!error) {
 			/* Process struct allocation succeed. */
 			new_proc = (process)mem->addr;
-			error = memory_alloc(mem2, stack_size);
-
-			if (error) {
-				/* Stack allocation failed. */
-				memory_free(mem);
-				new_proc = NULL;
-			}
-
-			/* Stack allocation succeed. */
 			new_proc->stack_start = mem2->addr;
 		}
-
-		/* Process struct allocation failed. */
+		else
+			/* Process struct allocation failed. */
+			memory_free(mem2);
+	} else
+		/* Stack allocation failed. */
 		new_proc = NULL;
-	}
-#else
-	{
-		INTR_DISABLE();
-		error = memory_alloc(mem2, stack_size);
-
-		if (!error) {
-			/* Stack allocation succeed. */
-			error = memory_alloc(mem, sizeof(struct process));
-
-			if (!error) {
-				/* Process struct allocation succeed. */
-				new_proc = (process)mem->addr;
-				new_proc->stack_start = mem2->addr;
-			}
-			else
-				/* Process struct allocation failed. */
-				memory_free(mem2);
-		} else
-			/* Stack allocation failed. */
-			new_proc = NULL;
-	}
-#endif
 
 	INTR_ENABLE();
 	return new_proc;

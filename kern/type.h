@@ -56,11 +56,12 @@ typedef unsigned int      uintptr_t;
 #error word size doesn't supported.
 #endif
 
-/* TODO: We should make them change with word size or not? */
 typedef int32_t   tm_t;
 typedef uint32_t  pid_t;
 typedef uint8_t   prio_t;
-typedef uint8_t   reg_t; /* 1 - 16 */
+typedef uint8_t   reg_t; /* register number between 1 - 16 */
+typedef int32_t   register_t; /* register signed value */
+typedef uint32_t  uregister_t; /* register unsigned value */
 typedef uint32_t  ts_t;
 typedef int32_t   mode_t;
 typedef uint32_t  key_t;

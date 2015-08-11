@@ -9,7 +9,6 @@
 #include "ipc.h"
 #include "config.h"
 
-/* Only a prototype ... the complete one should be in the app code. */
 int main()
 {
 	/* Default arguments settings ... */
@@ -35,6 +34,11 @@ int main()
 	errno = interrupt_init(); /* Initiate the interrupt service routines. */
 	if (errno != 0)
 		panic("interrupt_init");
+
+#ifdef IPC_CONFIG
+	errno = ipc_init(); /* Initiate the ipc feature. */
+	if (errno != 0)
+		panic("ipc_init");
 
 	/* User defined processes and data structures initiated here ... */
 

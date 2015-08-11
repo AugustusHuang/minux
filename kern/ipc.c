@@ -9,6 +9,7 @@
 /* for memset */
 #include <string.h>
 
+#ifdef IPC_CONFIG
 /* Now all we support are ipc routines directly ported from sysv.
  * Someday POSIX ipc will be supported! */
 
@@ -828,4 +829,4 @@ int ipc_init()
 		return errno;
 	return ENONE;
 }
-
+#endif

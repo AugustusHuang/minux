@@ -1,6 +1,7 @@
 #ifndef KERN_IPC_H
 #define KERN_IPC_H
 
+#ifdef IPC_CONFIG
 #define IPC_INFO 3
 #define IPC_STAT 2
 #define IPC_SET  1
@@ -156,5 +157,6 @@ extern int shm_dt(const void *addr);
 extern int shm_get(key_t key, size_t size, mode_t flag);
 /* Different commands to a specified area of shared memory. */
 extern int shm_ctrl(int shm_id, int cmd, shm_queue_attr attr);
+#endif
 
 #endif

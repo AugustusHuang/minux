@@ -1,7 +1,8 @@
 #ifndef KERN_CONFIG_H
 #define KERN_CONFIG_H
 
-#define MACHINE_CONFIG "ARM-CORTEX-M4"
+/* For now only Cortex-M3 and Cortex-M4 are supported. */
+#define MACHINE_CONFIG "ARM"
 
 #define ENDIAN_BIG     0
 #define ENDIAN_LITTLE  1
@@ -14,7 +15,7 @@
 #define WORDSIZE_CONFIG 32
 
 /* priority from 0 to MAX */
-#define PRIO_MAX_CONFIG 63U
+#define PRIO_MAX_CONFIG 31U
 #define PRIO_CLK_CONFIG 15U
 
 /* pid maximum */
@@ -23,11 +24,6 @@
 /* default idle and clk stack size */
 #define IDLE_STACK_SIZE_CONFIG 1024U
 #define CLK_STACK_SIZE_CONFIG  4096U
-
-/* 0 means downward, 1 means upward */
-#define STACK_GROWTH_DOWNWARD 0
-#define STACK_GROWTH_UPWARD   1
-#define STACK_GROWTH_CONFIG   STACK_GROWTH_DOWNWARD
 
 #define SWITCH_FREQUENCY_CONFIG 1000U
 
@@ -42,9 +38,13 @@
 #define INTR_ENABLE()  interrupt_enable()
 #endif
 
-/* Memory system size (b). */
+/* Memory system size (b). 
+ * TODO: Shall we move the job to memory linker script? */
 #define MEMORY_SIZE_CONFIG 512U
 
+/* Enable ipc feature or not. */
+#define IPC_CONFIG  0
+/* TODO: There should be a unified total-size. Let them be here now. */
 /* Message queue maximal bytes. */
 #define MSGQ_CONFIG 2048U
 /* Message queue message maximal bytes. */
