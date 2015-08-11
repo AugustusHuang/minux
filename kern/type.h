@@ -43,8 +43,6 @@ typedef volatile int16_t  vint16_t;
 typedef volatile int32_t  vint32_t;
 typedef volatile int64_t  vint64_t;
 
-typedef char     *string;
-
 /* void * pointers! */
 #if WORDSIZE_CONFIG == 64
 typedef long int          intptr_t;

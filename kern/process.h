@@ -24,12 +24,12 @@
  * */
 typedef struct process *process;
 struct process {
-	void *sp; /* updated when switched out */
+	int32_t sp; /* updated when switched out */
 	string name;
 	pid_t pid;
 	process prev;
 	process next; /* ranked by pid */
-	void *stack_begin;
+	int32_t stack_begin;
 	uint32_t stack_size;
 	int (*text)();
 	/* How long since last switch (automatically) or sleep (manually),
