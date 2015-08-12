@@ -33,7 +33,23 @@ lie in between so there's no need to capitalize them.
 **Long comment** which occupies more than one line should have a `*` before
 each line.  
 If it's necessary to draw pictures in the comment, make it looks well within
-a 80x24 terminal, since it's the *de facto* size.
+a 80x24 terminal, since it's the *de facto* size.  
+
+Comments can appear within different scale of contexts, **file-wise**,
+**statement-wise** and **item-wise**, **file-wise** comments should appear
+in the top of a file and should only be **long comment**, and it should be
+
+	/*
+	 * blablabla 
+	 */
+
+**statement-wise** comments can be **long-comment** or **short-comment**,
+so can **item-wise** comments, if **item-wise** comments don't lie on the same
+line as the described item, it should appear above it.  
+If **long-comments** are **statement-wise** or **item-wise**, they should be
+
+	/* blablabla
+	 * blablabla */
 
 ### Debug messages
 Because I decide to use **ARM**'s semihost property, function `panic` will
