@@ -66,8 +66,8 @@ struct process {
 	process next; /* ranked by pid */
 	int32_t stack_begin;
 	uint32_t stack_size;
-	/* FIXME: Do we need this? */
-	int (*text)();
+	/* pointer to function */
+	void (*func)();
 	/* How long since last switch (automatically) or sleep (manually),
 	 * when switched in to run, accumulate it, state is RUN,
 	 * when switched out, clear it to 0, state is WAIT,

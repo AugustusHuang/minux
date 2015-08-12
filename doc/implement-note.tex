@@ -1,0 +1,93 @@
+%
+% Implementation Note of minux
+%
+% Augustus Huang Xuxing
+%
+% A simple LaTeX template for Books
+%  (c) Aleksander Morgado <aleksander@es.gnu.org>
+%  Released into public domain
+%
+
+\documentclass{book}
+\usepackage[a4paper, top=3cm, bottom=3cm]{geometry}
+
+\usepackage[latin1]{inputenc}
+\usepackage{setspace}
+\usepackage{fancyhdr}
+\usepackage{tocloft}
+
+
+
+\begin{document}
+
+
+\pagestyle{empty}
+%\pagenumbering{}
+% Set book title
+\title{\textbf{Implementation note of minux}}
+% Include Author name and Copyright holder name
+\author{Huang Xuxing}
+
+
+
+% 1st page for the Title
+%-------------------------------------------------------------------------------
+\maketitle
+
+
+% 2nd page, thanks message
+%-------------------------------------------------------------------------------
+\thispagestyle{empty}
+\thanks{Thanks to my parents.}
+\newpage
+
+
+
+% General definitions for all Chapters
+%-------------------------------------------------------------------------------
+
+% Define Page style for all chapters
+\pagestyle{fancy}
+% Delete the current section for header and footer
+\fancyhf{}
+% Set custom header
+\lhead[]{\thepage}
+\rhead[\thepage]{}
+
+% Set arabic (1,2,3...) page numbering
+\pagenumbering{arabic}
+
+% Set double spacing for the text
+\doublespacing
+
+
+
+% Not enumerated chapter
+%-------------------------------------------------------------------------------
+\chapter*{Preface}
+
+Testing
+
+
+% If the chapter ends in an odd page, you may want to skip having the page
+%  number in the empty page
+\newpage
+\thispagestyle{empty}
+
+% First enumerated chapter
+%-------------------------------------------------------------------------------
+\chapter{Testing}
+
+Testing
+
+% Last pages for ToC
+%-------------------------------------------------------------------------------
+\newpage
+% Include dots between chapter name and page number
+\renewcommand{\cftchapdotsep}{\cftdotsep}
+%Finally, include the ToC
+\tableofcontents
+
+
+\end{document}
+
