@@ -1,8 +1,12 @@
 #ifndef KERN_CONFIG_H
 #define KERN_CONFIG_H
 
+#define CONFIG_VERSION "0.0.0"
+
 /* debug message printing config */
 #define CONFIG_DEBUG   0
+
+/* architecture and base level configurations */
 
 /* For now only Cortex-M3 and Cortex-M4 are supported. */
 #define CONFIG_MACHINE "ARM"
@@ -12,10 +16,10 @@
 #define ENDIAN_LITTLE  1
 #define CONFIG_ENDIAN  ENDIAN_LITTLE
 
-#define CONFIG_VERSION "0.0.1"
-
 /* Here I assume 32-bit word size. */
 #define CONFIG_WORDSIZE 32
+
+/* process module configuration */
 
 /* priority ranged from 0 to MAX */
 #define CONFIG_MAX_PRIO 31U
@@ -28,8 +32,12 @@
 #define CONFIG_IDLE_STACK_SIZE 1024U
 #define CONFIG_CLK_STACK_SIZE  4096U
 
+/* scheduler module configuration */
+
 /* clock frequency to do context switch */
 #define CONFIG_SWITCH_FREQUENCY 1000U
+
+/* interrupt module configuration */
 
 /* Local status register, if enabled, allocate it right after function call,
  * i.e. the first local variable in the callee frame, if disabled, act like
@@ -47,9 +55,13 @@
 #define INTR_ENABLE()  interrupt_enable()
 #endif
 
+/* memory module configuration */
+
 /* memory system size in KB. 
  * TODO: Shall we move the job to memory linker script? */
 #define CONFIG_MEMORY_SIZE 512U
+
+/* ipc module configuration */
 
 /* Enable ipc feature or not. */
 #define CONFIG_IPC  0

@@ -54,5 +54,6 @@ If **long-comments** are **statement-wise** or **item-wise**, they should be
 ### Debug messages
 Because I decide to use **ARM**'s semihost property, function `panic` will
 be a great place to play kernel running error.  
-If debug messages and information are necessary, change the macro `DEBUG` to 1
-and use `#ifdef DEBUG` and `#endif` wrapper around debug code.
+If debug messages and information are necessary, change the macro `CONFIG_DEBUG`
+to 1 and use `#ifdef CONFIG_DEBUG` and `#endif` wrapper around debug code.  
+Of course `panic` is not enough, use `printf` then!

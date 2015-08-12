@@ -1,3 +1,35 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2015 Huang Xuxing
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software")
+ * to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge,
+ * publish, distribute, sublicense, and/or sell copies of the Software,
+ * and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/*
+ * process.h
+ * Declarations of process module data structures and routines,
+ * global variables are declared in order to fast fetch current running
+ * process and current highest ready process.
+ */
+				  
 #ifndef KERN_PROCESS_H
 #define KERN_PROCESS_H
 
@@ -20,25 +52,25 @@
  * | prioa |    | priob |           | prioz |
  * ---------    ---------           ---------
  * |  RUN  |    | WAIT  |           | SLEEP |
- * ---------    ---------           ---------
- * */
+ * ---------    ---------           --------- */
+
 typedef struct process *process;
 struct process {
 	int32_t sp; /* updated when switched out */
-	string name;
+	char name[CONFIG_PROCESS_NAME_LENGTH];
 	pid_t pid;
 	process prev;
 	process next; /* ranked by pid */
 	int32_t stack_begin;
 	uint32_t stack_size;
+	/* FIXME: Do we need this? */
 	int (*text)();
 	/* How long since last switch (automatically) or sleep (manually),
 	 * when switched in to run, accumulate it, state is RUN,
 	 * when switched out, clear it to 0, state is WAIT
 	 * when made to sleep, set to the total sleep time and count down to 0,
 	 * state is SLEEP,
-	 * when resumed or reach 0, change state to WAIT and reset it to 0.
-	 */
+	 * when resumed or reach 0, change state to WAIT and reset it to 0. */
 	tm_t time;
 	prio_t prio;
 	int state;
@@ -55,8 +87,8 @@ struct process {
  * | -+---------->| node(PRIO_MAX - 1)1 | ... |
  * ----           -----------------------------
  * | -+---------->| node(PRIO_MAX) |
- * ----           ------------------
- */
+ * ----           ------------------ */
+
 typedef struct prio_queue *prio_queue;
 struct prio_queue {
 	prio_node head;
@@ -75,8 +107,8 @@ int process_delete(pid_t pid);
 int process_prio_change(pid_t pid, prio_t new_prio);
 
 /* return register value will be stored in ptr */
-int process_get_reg(pid_t pid, reg_t reg, uint32_t *ptr);
-int process_set_reg(pid_t pid, reg_t reg, uint32_t value);
+int process_get_reg(pid_t pid, reg_t reg, int32_t *ptr);
+int process_set_reg(pid_t pid, reg_t reg, int32_t value);
 
 int process_sleep(pid_t pid, tm_t time);
 int process_resume(pid_t pid);
