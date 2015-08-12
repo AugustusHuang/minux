@@ -34,6 +34,9 @@
 #define KERN_PROCESS_H
 
 /* Process double link:
+ * In order to fast fetch swapped in process's stack pointer, make it the
+ * first slot in the process structure, so (int32_t)[R0] will be sp_current
+ * if R0 stores the address of the process structure swapped in.
  * ---------    ---------           ---------
  * | proc1 |    | proc2 |           | procn |
  * ---------    ---------           ---------
@@ -67,12 +70,14 @@ struct process {
 	int (*text)();
 	/* How long since last switch (automatically) or sleep (manually),
 	 * when switched in to run, accumulate it, state is RUN,
-	 * when switched out, clear it to 0, state is WAIT
+	 * when switched out, clear it to 0, state is WAIT,
 	 * when made to sleep, set to the total sleep time and count down to 0,
 	 * state is SLEEP,
 	 * when resumed or reach 0, change state to WAIT and reset it to 0. */
 	tm_t time;
+	/* Priority ranged from 0 to CONFIG_MAX_PRIO. */
 	prio_t prio;
+	/* State can be one of RUN, WAIT and SLEEP. */
 	int state;
 };
 
@@ -86,8 +91,8 @@ struct process {
  * ----           -----------------------------
  * | -+---------->| node(PRIO_MAX - 1)1 | ... |
  * ----           -----------------------------
- * | -+---------->| node(PRIO_MAX) |
- * ----           ------------------ */
+ * | -+---------->| node(PRIO_MAX)1 |
+ * ----           ------------------- */
 
 typedef struct prio_queue *prio_queue;
 struct prio_queue {
@@ -101,7 +106,9 @@ struct prio_node {
 	prio_node next;
 };
 
-int process_create(string name, prio_t prio, uint32_t ssize, int (*func)());
+/* FIXME: the last argument maybe superfluous if we allocate all functions
+ * in .text section and of course, the process itself will be there. */
+int process_create(char *name, prio_t prio, uint32_t ssize, int (*func)());
 int process_delete(pid_t pid);
 
 int process_prio_change(pid_t pid, prio_t new_prio);
@@ -127,17 +134,26 @@ int prio_head2tail(prio_t prio);
 
 int prio_init(void);
 
+/* All the global variables below will lie in the .bss area. */
 /* current running process */
 extern process curproc;
+/* current waiting process */
+extern process wait_proc;
 /* process double-linked list */
 extern process proc_list;
-/* idle process static structure, will have pid = 0, lowest priority */
+/* Idle process static structure, will have pid = 0, lowest priority. */
 extern struct process proc_idle;
-/* clk process static structure, will have pid = 1, high priority */
+/* Tick process static structure, will have pid = 1, high priority. */
 extern struct process proc_tick;
+/* Mine process static structure, will have pid = 2 if enabled, low priority. */
+#ifdef CONFIG_PROC_MINE
+extern struct process proc_mine;
+#endif
+
 /* current processes numbers */
 extern uint32_t nprocs;
+
 /* current priority queue */
-extern struct prio_queue pqueue[PRIO_MAX + 1];
+extern struct prio_queue pqueue[CONFIG_MAX_PRIO + 1];
 
 #endif

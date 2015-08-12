@@ -1,14 +1,14 @@
 #ifndef KERN_SYSTM_H
 #define KERN_SYSTM_H
 
-/* system level */
+/* system level
+ * TODO: Everytime we switch the level, call a trigger function and it will
+ * change this variable. */
 extern int system_level;
 /* current process priority */
 extern prio_t curprio;
 /* highest waiting priority */
-extern prio_t highprio;
-/* physical memory */
-extern int physmem;
+extern prio_t wait_prio;
 /* system note */
 extern char note[];
 /* system panic string */
