@@ -12,7 +12,7 @@
 	.global interrupt_wait
 	.global exception_wait
 	.global context_switch
-	.global interrupt_pendsv
+	.global PendSV_Handler
 	.global switch_ready
 
 	/* PendSV interrupt register address */
@@ -78,7 +78,7 @@ context_switch:
 	bx lr
 
 	.thumb_func
-interrupt_pendsv:
+PendSV_Handler:
 	cpsid i
 	/* Assign process stack pointer to R0. */
 	mrs r0, psp

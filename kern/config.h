@@ -7,6 +7,9 @@
 #define CONFIG_DEBUG      0
 
 /* architecture and base level configurations */
+/* stack and heap size */
+#define CONFIG_STACK_SIZE 0x1000
+#define CONFIG_HEAP_SIZE  0x7000
 
 /* For now only Cortex-M3 and Cortex-M4 are supported. */
 #define CONFIG_MACHINE    "ARM"
