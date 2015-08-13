@@ -79,6 +79,8 @@ struct process {
 	prio_t prio;
 	/* State can be one of RUN, WAIT and SLEEP. */
 	int state;
+	/* Slot used to multiple return. */
+	int retval;
 };
 
 /* Priority queue: nodes are single linked list.

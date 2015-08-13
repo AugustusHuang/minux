@@ -1,4 +1,4 @@
-a/*
+/*
  * The MIT License (MIT)
  *
  * Copyright (c) 2015 Huang Xuxing
@@ -40,6 +40,7 @@ static process process_alloc(uint32_t ssize);
 static void process_free(process proc);
 static prio_node pnode_alloc();
 static void pnode_free(prio_node node);
+static void process_stack();
 
 int process_create(string name, prio_t prio, uint32_t ssize, int (*func)())
 {

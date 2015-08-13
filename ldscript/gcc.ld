@@ -27,14 +27,11 @@
  * Need modifying for a specific board. 
  *   FLASH.ORIGIN: starting address of flash
  *   FLASH.LENGTH: length of flash
- *   SWAP.ORIGIN: starting address of swap area
- *   SWAP.LENGTH: length of swap area
  *   SRAM.ORIGIN: starting address of SRAM
  *   SRAM.LENGTH: length of SRAM */
 MEMORY
 {
-    FLASH  (rx)   : ORIGIN = 0x00000000, LENGTH = 510K
-    SWAP   (rx)   : ORIGIN = 0x0003F800, LENGTH = 2K
+    FLASH  (rx)   : ORIGIN = 0x00000000, LENGTH = 256K
     SRAM   (rwx)  : ORIGIN = 0x20000000, LENGTH = 64K
 }
 
@@ -52,21 +49,18 @@ SECTIONS
 	*(.rodata*))
     } > FLASH
 
-    .flash_swap :
-    {
-        _flash_swap_addr = .;
-    } > SWAP
-    
+    . = ALIGN(4);
     __etext = .;
+    PROVIDE(etext = .);
 
-    .data : AT (_etext)
+    .data : AT (__etext)
     {
         __data_start__ = .;
 	*(vector_table)
 	*(.data*)
 	. = ALIGN(4);
 	__data_end__ = .;
-    } > RAM
+    } > SRAM
 
     .bss :
     {
@@ -78,26 +72,29 @@ SECTIONS
 	__bss_end__ = .;
     } > SRAM
 
-    .heap (COPY) :
+    .heap :
     {
+	. = ALIGN(8);
         __end__ = .;
 	PROVIDE(end = .);
-	*(.heap*)
+	__HeapBase = .;
+	. += CONFIG_HEAP_SIZE;
 	__HeapLimit = .;
     } > SRAM
 
-    .stack_dummy (COPY) :
+    .stack_dummy :
     {
-        *(.stack*)
+	. = ALIGN(8);
+	. += CONFIG_STACK_SIZE;
     } > SRAM
 
     __StackTop = ORIGIN(SRAM) + LENGTH(SRAM);
-    __StackLimit = __StackTop - SIZEOF(.stack_dummy);
+    __StackLimit = __StackTop - CONFIG_STACK_SIZE;
 
     PROVIDE(__stack = __StackTop);
 
     ASSERT(__StackLimit >= __HeapLimit, "SRAM with overlapping stack and heap");
 
-    __memory_top__ = __HeapTop;
+    __memory_top__ = __HeapBase;
     __memory_limit__ = __HeapLimit;
 }

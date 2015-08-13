@@ -1,86 +1,195 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2015 Huang Xuxing
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software")
+ * to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge,
+ * publish, distribute, sublicense, and/or sell copies of the Software,
+ * and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/*
+ * memory.c
+ * Implementation of memory management module, use first-fit algorithm and
+ * a memory table to handle memory requirement.
+ */
+
 #include "param.h"
 #include "systm.h"
 #include "process.h"
 #include "memory.h"
+#include "type.h"
 
 /* for memmove */
 #include <string.h>
 
-#ifdef MEMORY_SIZE_CONFIG
-#define MEMORY_SIZE MEMORY_SIZE_CONFIG
-#else
-#define MEMORY_SIZE 256U
+#ifdef CONFIG_DEBUG
+#include <stdio.h>
 #endif
 
-int memory_alloc(mapent m, uint32_t size)
+#define MEMORY_SIZE CONFIG_HEAP_SIZE
+
+static void memory_block_init(memory_block block);
+static int memory_block_index(size_t size);
+static size_t memory_block_size(const memory_block block);
+static void memory_remove_free(memory_block block);
+static void memory_push_free(memory_block block);
+
+static void memory_block_init(memory_block block)
 {
-	if (raw_memory < size)
-		return ENOMEM;
-
-	/* We have enough memory! Make a new mapent and link it to the end of
-	 * the memory map list. */
-	mapent slot;
-	/* After the loop slot points to the last map entry. */
-	for (slot = map_list; slot->next != NULL; slot = slot->next);
-	slot->next = m;
-	m->size = size;
-	m->next = NULL;
-	/* Fetch the address from the linear memory address. */
-	m->addr = &memory_array[MEMORY_SIZE - raw_memory];
-
-	raw_memory -= size;
-	return ENONE;
+	block->list.next = &block->list;
+	block->list.prev = &block->list;
+	block->used = 0;
+	block->free.next = &block->free;
+	block->free.prev = &block->free;
 }
 
-/* Since map entries are single-linked, we only need to free entry. */
-void memory_free(mapent m)
+static int memory_block_index(size_t size)
 {
-	mapend slot;
-
-	/* Trivial case, remove it from the tail and add to raw memory. */
-	if (m->next == NULL)
-		for (slot = map_list; slot->next != m; slot = slot->next)
-			slot->next = NULL;
-
-	/* m lies in between. */
-	else {
-		/* Like what UN*X does, make those two memory fractions one. */
-		memmove(m->addr, m->next->addr, &memory_array[MEMORY_SIZE - raw_memory]
-				- (char *)m->next->addr);
-
-		for (slot = m->next; slot != NULL; slot = slot->next)
-			slot->addr = (void *)((char *)m->addr - m->size);
-
-		for (slot = map_list; slot->next != m; slot = slot->next) {
-			slot->next = m->next;
-			m->next = NULL;
-		}
+	int i = -1;
+	while (size > 0) {
+		size >>= 1;
+		i++;
 	}
-	
-	raw_memory += m->size;
+	return i;
+}
+
+static size_t memory_block_size(const memory_block block)
+{
+	return (char *)(block->list.next) - (char *)(&block->list) - HEADER_SIZE;
+}
+
+static void memory_remove_free(memory_block block)
+{
+	size_t len = memory_block_size(block);
+	int index = memory_block_index(len);
+
+	/* Remove this block from free list. */
+	memory_free -= len - HEADER_SIZE;
+}
+
+static void memory_push_free(memory_block block)
+{
+	size_t len = memory_block_size(block);
+	int index = memory_block_index(len);
+
+	/* Push this block onto the free list. */
+	memory_free += len - HEADER_SIZE;
 }
 
 void memory_init()
 {
-	raw_memory = MEMORY_SIZE;
-	/* At the very beginning raw_memory will be the one and only. */
-	map_list = NULL;
+	char *memory_start = __memory_start__;
+	char *memory_end = __memory_end__;
+	memory_list head;
+	size_t len;
+	int index;
+
+	free_block[32] = { NULL };
+	/* Let the FIRST and LAST memory block assigned to the head and tail. */
+	first = (memory_block)memory_start;
+	second = first + 1;
+	last = ((memory_block)memory_end) - 1;
+	memory_block_init(first);
+	memory_block_init(second);
+	memory_block_init(last);
+	
+	/* Insert our SECOND memory block's memory list in between. */
+	memory_insert_after(&first->list, &second->list);
+	memory_insert_after(&second->list, &last->list);
+	
+	/* The first and last block is occupied so we get stable head and tail. */
+	first->used = 1;
+	last->used = 1;
+
+	len = memory_block_size(second);
+	index = memory_block_index(len);
+
+	/* And then push the INDEXth slot onto the free list of SECOND. */
+	if (&free_block[index] == NULL)
+		head = NULL;
+	head = &free_block[index]->free;
+	memory_push(&head, &second->free);
+
+	memory_free = len - HEADER_SIZE;
+	memory_meta = sizeof(struct memory_block) * 2 + HEADER_SIZE;
 }
 
-void *malloc(size_t size)
+void *memory_alloc(size_t size)
 {
-	mapent m;
+	size_t new_size;
+	int n;
+	memory_block block;
+	
+	if (size < sizeof(struct memory_list))
+		new_size = sizeof(struct memory_list);
+	else
+		new_size = ALIGN4(size);
 
-	if ((errno = memory_alloc(m, size)))
+	n = memory_block_index(new_size - 1) + 1;
+
+	if (n >= 32) {
+#ifdef CONFIG_DEBUG
+		printf("Size too big.\n");
+#endif
 		return NULL;
-	return m->addr;
+	}
+
+	while (!free_block[n]) {
+		n++;
+		if (n >= 32) {
+#ifdef CONFIG_DEBUG
+			printf("Out of memory.\n");
+#endif
+			return NULL;
+		}
+	}
+
+	/* We have enough memory! */
 }
 
-void free(void *ptr)
+void memory_free(void *ptr)
 {
-	mapent m;
-	for (m = map_list; m != NULL; m = m->next)
-		if ((m->addr <= ptr) && (void *)((char *)m->addr + m->size) >= ptr)
-			memory_free(m);
-	/* If we don't found what to free, do nothing. */
+	memory_block block, next, prev;
+
+	/* Adjust the pointer to suit the block border. */
+	block = (memory_block)((char *)ptr - HEADER_SIZE);
+
+	/* Assign next and prev to the next and prev list of LIST. */
+
+	memory_used -= memory_block_size(block);
+
+	if (next->used == 0) {
+		memory_remove_free(next);
+		memory_remove(&next->list);
+		memory_meta -= HEADER_SIZE;
+		memory_free += HEADER_SIZE;
+	}
+
+	if (prev->used == 0) {
+		memory_remove_free(prev);
+		memory_remove(&block->list);
+		memory_push_free(prev);
+		memory_meta -= HEADER_SIZE;
+		memory_free += HEADER_SIZE;
+	} else {
+		block->used = 0;
+
+		memory_push_free(block);
+	}
 }
